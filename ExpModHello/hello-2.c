@@ -18,3 +18,5 @@ static void __exit hello_2_exit(void){
 
 module_init(hello_2_init);
 module_exit(hello_2_exit);
+
+
