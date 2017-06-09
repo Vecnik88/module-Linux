@@ -14,3 +14,5 @@ int init_module(){
 void cleanup_module(){
 	printk(KERN_ALERT "Goodbye world 1.\n");
 }
+
+
