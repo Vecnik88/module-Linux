@@ -99,7 +99,3 @@ static ssize_t device_write(struct file* filp, const char* buffer, size_t length
 	printk("<1>Sorry, this operation isn't supported.\n");
 	return -EINVAL;
 }
-
-
-
-
