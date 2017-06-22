@@ -3,3 +3,8 @@
 obj-m += chardev.o
 
 
+
+
+
+
+
