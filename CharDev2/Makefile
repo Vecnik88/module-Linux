@@ -6,5 +6,3 @@ obj-m += chardev.o
 
 
 
-
-
