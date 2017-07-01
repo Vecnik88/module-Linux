@@ -74,5 +74,3 @@ static void funcExit(void){
 
 module_init(funcInit);
 module_exit(funcExit);
-
-
