@@ -3,7 +3,7 @@
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 #include <linux/miscdevice.h>
-#include "mopen.h"
+#include "../mopen.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Vecnik");
