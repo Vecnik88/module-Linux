@@ -44,7 +44,3 @@ void __init exitFunction(void){
 
 module_init(initFunction);
 module_exit(exitFunction);
-
-
-
-
