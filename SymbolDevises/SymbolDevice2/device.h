@@ -35,5 +35,3 @@ static void __init dev_exit(void);
 
 module_init(dev_init);
 module_exit(dev_exit);
-
-
