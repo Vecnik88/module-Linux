@@ -188,6 +188,3 @@ static void __exit dev_exit(void){
 	unregister_chrdev_region(MKDEV(major, DEVICE_FIRST), DEVICE_COUNT);
 	LOG("===== module removed =====\n");
 }
-
-
-
