@@ -88,5 +88,3 @@ static void myExit( void ){
 	nf_unregister_hook( &myHookStruct );
 	printk( KERN_INFO "========== MODULE HOOK FUNCTION EXIT ==========\n" );
 }
-
-
