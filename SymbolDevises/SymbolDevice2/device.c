@@ -8,9 +8,6 @@ module_param(mode, int, S_IRUGO);
 
 static int dev_open = 0;
 
-
-
-
 static int open_dev(struct inode* n, struct file* f){
 	LOG("open - node: %p, file: %p, refcount: %d", n, f, module_refcount(THIS_MODULE));
 
