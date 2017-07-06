@@ -3,11 +3,6 @@
 	Сделайте простой модуль, создающий простейшую иерархию в /proc независимо от версии ядра Linux.
 */
 
-
-
-
-
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/version.h>
