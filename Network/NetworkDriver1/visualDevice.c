@@ -8,6 +8,10 @@
 
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
 
+
+
+
+
 static int __init my_init( void ){
 	struct net_device* dev;
 	LOG( "Hello: module loaded at 0x%p\n", my_init );
