@@ -5,10 +5,6 @@
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
 #define ERR(...) printk( KERN_ERR __VA_ARGS__ )
 
-
-
-
-
 static int num = 1;						// <---. число создаваемых интерфейсов
 module_param( num, int, 0 );
 
