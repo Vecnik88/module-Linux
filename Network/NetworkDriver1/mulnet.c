@@ -5,17 +5,21 @@
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
 #define ERR(...) printk( KERN_ERR __VA_ARGS__ )
 
+
+
+
+
 static int num = 1;						// <---. число создаваемых интерфейсов
 module_param( num, int, 0 );
 
 static char* title;						// <---. префикс имени интерфейсов
 module_param( title, charp, 0 );
 
-static int digit = 1;					// <---. числовые суфиксы( по умолчанию )
+static int digit = 1;						// <---. числовые суфиксы( по умолчанию )
 module_param( digit, int, 0 );
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION( 3,17,0 ) )
-static int mode = 1;					// <---. режим нумерации интерфейсов
+static int mode = 1;						// <---. режим нумерации интерфейсов
 module_param( mode, int, 0 );
 #endif
 
