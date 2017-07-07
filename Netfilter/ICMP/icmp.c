@@ -1,4 +1,21 @@
-#include "icmp.h"
+/*
+
+		Напишите модуль, который перехватывает icmp-request пакеты 
+	и формирует свой ответ на них (icmp-reply), без дальнейшего отправления icm-request. 
+
+*/
+
+#include <linux/ip.h>
+#include <linux/icmp.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/skbuff.h>
+#include <linux/netfilter.h>
+#include <linux/netfilter_ipv4.h>
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Vecnik88");
+MODULE_DESCRIPTION("Test programm");
 
 static unsigned int myHookFunction(void* priv, struct sk_buff* skb, const struct nf_hook_state* state){
 
@@ -88,3 +105,6 @@ static void myExit( void ){
 	nf_unregister_hook( &myHookStruct );
 	printk( KERN_INFO "========== MODULE HOOK FUNCTION EXIT ==========\n" );
 }
+
+module_init(myInit);
+module_exit(myExit);
