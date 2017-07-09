@@ -32,10 +32,10 @@ int main( int argc, char** argv ){
 	bzero( &dst_addr, sizeof( dst_addr ) );
 
 	/* адрес источника */				/*	struct sockaddr_nl{									*/
-	src_addr.nl_family = AF_NETLINK;	/*		sa_family_t nl_family;		<---. AF_NETLINK	*/
-	src_addr.nl_pad = 0;				/*		unsigned short nl_pad;		<---. ноль			*/
-	src_addr.nl_pid = getpid();			/*		pid_t nl_pid;				<---. ID порта		*/
-	src_addr.nl_groups = 0;				/*		__u32 nl_groups; };			<---. маска групп	*/
+	src_addr.nl_family = AF_NETLINK;		/*		sa_family_t nl_family;		<---. AF_NETLINK	*/
+	src_addr.nl_pad = 0;				/*		unsigned short nl_pad;		<---. ноль		*/
+	src_addr.nl_pid = getpid();			/*		pid_t nl_pid;			<---. ID порта		*/
+	src_addr.nl_groups = 0;				/*		__u32 nl_groups; };		<---. маска групп	*/
 	
 	/* адрес назначения */
 	dst_addr.nl_family = AF_NETLINK;
