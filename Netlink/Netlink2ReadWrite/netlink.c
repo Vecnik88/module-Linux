@@ -17,15 +17,15 @@
 struct sock* nl_sock = ( void* ) 0;
 
 static void recvMessageFromUserSpace( struct sk_buff* skb ){
-	int res = 0;											/* для ошибок */
-	int pid = 0;											/* pid процесса назначения */
+	int res = 0;								/* для ошибок */
+	int pid = 0;								/* pid процесса назначения */
 
 	struct sk_buff* skbSend = ( void* ) 0;					/* новый пакет */
 	struct nlmsghdr* nl_hdr = ( void* ) 0;					/* заголовок пришедшего пакета */
 	struct nlmsghdr* nl_hdr_send = ( void* ) 0;				/* заголовок нового пакета */
 
-	char recvMessage[ MAX_PAYLOAD - NLMSG_HDRLEN ] = {0};	/* пришедшее сообщение */
-	char* dataKernel = "Hello user space. This is Kernel!";	/* сообщение для пространства пользователя */
+	char recvMessage[ MAX_PAYLOAD - NLMSG_HDRLEN ] = {0};			/* пришедшее сообщение */
+	char* dataKernel = "Hello user space. This is Kernel!";			/* сообщение для пространства пользователя */
 
 	nl_hdr = ( struct nlmsghdr* ) skb->data;				/* получаем данніе из пакета вместе с заголовком */
 	pid = nl_hdr->nlmsg_pid;
@@ -33,7 +33,7 @@ static void recvMessageFromUserSpace( struct sk_buff* skb ){
 	memcpy( recvMessage, nlmsg_data( nl_hdr ), strlen( nlmsg_data( nl_hdr ) ) );
 	LOG( "Message from user space:\n\t%s", ( char* )recvMessage );
 
-	skbSend = nlmsg_new( MAX_PAYLOAD, GFP_KERNEL );			/* инкапсулированный alloc_skb() */
+	skbSend = nlmsg_new( MAX_PAYLOAD, GFP_KERNEL );				/* инкапсулированный alloc_skb() */
 	if( skbSend == NULL ){
 		ERR( "Failed to allocate new memory" );
 		return;
@@ -43,7 +43,7 @@ static void recvMessageFromUserSpace( struct sk_buff* skb ){
 	NETLINK_CB( skbSend ).dst_group = 0;
 	strncpy( nlmsg_data( nl_hdr_send ), dataKernel, strlen( dataKernel ) );
 
-	res = nlmsg_unicast( nl_sock, skbSend, pid );			/* отправка сообщения в пространство пользователя */
+	res = nlmsg_unicast( nl_sock, skbSend, pid );				/* отправка сообщения в пространство пользователя */
 	if( res < 0 )
 		ERR( "Packet not send" );
 
@@ -51,7 +51,7 @@ static void recvMessageFromUserSpace( struct sk_buff* skb ){
 }
 
 struct netlink_kernel_cfg cfg = {
-	.input = recvMessageFromUserSpace,						/* наша функция callback */
+	.input = recvMessageFromUserSpace,					/* наша функция callback */
 };
 
 static int __init netlinkInit( void ){
