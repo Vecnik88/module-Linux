@@ -3,9 +3,6 @@
 
 obj-m += virt1.o
 
-
-
-
 # Подключаем Makefile из kernel-headers с помошью -С,
 # который лежит в каталоге /lib/modules/[версия ядра]/build
 # используем из него цель modules для сборки модулей в списке obj-m
