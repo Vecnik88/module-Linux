@@ -17,14 +17,14 @@
 static int my_dev_id = 178;					/* id номера устр-ва, лучше указывать ссылку 
 												на структуру созданную самому, но можно и так */
 static int irq_counter = 0;					/* счетчик срабатываний прерываний */
-static int irq = NUMBER_IRQ;				/* линия, на которой будемотслеживать количество прерываний */
+static int irq = NUMBER_IRQ;					/* линия, на которой будемотслеживать количество прерываний */
 module_param( irq, int, S_IRUGO );
 
 static irqreturn_t functionHandlerIRQ( int irq, void* dev_id ){	/* наша фун-ция обработки прерываний */
 	++irq_counter;
 	LOG( "IRQ( ISR ) - work\n" );
 
-	return IRQ_NONE;						/* пропускаем, говорим что это не мы должны его обрабатывать */
+	return IRQ_NONE;					/* пропускаем, говорим что это не мы должны его обрабатывать */
 }
 
 static int __init irq_initH( void ){
