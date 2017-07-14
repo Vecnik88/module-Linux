@@ -11,7 +11,7 @@ MODULE_DESCRIPTION( "Работа с циклическим списком в я
 
 static int size = 5;
 
-module_param( size, int, S_IRUGO | S_IWUSR );			/* размер нашего списка */
+module_param( size, int, S_IRUGO | S_IWUSR );				/* размер нашего списка */
 
 struct data{
 	int n;
