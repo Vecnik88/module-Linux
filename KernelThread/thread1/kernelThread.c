@@ -29,13 +29,3 @@ static int __init test_thread( void ){
 }
 
 module_init( test_thread );
-
-
-
-
-
-
-
-
-
-
