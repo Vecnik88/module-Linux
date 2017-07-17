@@ -87,7 +87,7 @@ static int test_mlock( void ){
 	unsigned j1 = jiffies, j2;
 
 	if( sync > max_level )
-		sync = -1;									/* no synchronize */
+		sync = -1;						/* no synchronize */
 
 	LOG( "! repeat %d times in %d levels; synch. in level %d\n", rep, max_level, sync );
 
