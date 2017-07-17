@@ -61,13 +61,3 @@ module_init( test_thread );
 MODULE_LICENSE( "GPL" );
 MODULE_VERSION( "1.1" );
 MODULE_DESCRIPTION( "Пример многопоточности в ядре" );
-
-
-
-
-
-
-
-
-
-
