@@ -65,8 +65,3 @@ fail_oupen:
 
 module_init( kread_init );
 MODULE_LICENSE( "GPL" );
-
-
-
-
-
