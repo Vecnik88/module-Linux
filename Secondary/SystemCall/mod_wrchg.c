@@ -74,6 +74,3 @@ module_init( wrchg_init );
 module_exit( wrchg_exit );
 
 MODULE_LICENSE( "GPL" );
-
-
-
