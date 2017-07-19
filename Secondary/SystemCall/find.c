@@ -1,5 +1,6 @@
 static void* find_sym( const char* sym ){
 	static unsigned long faddr = 0;
+	
 	/* вложенная функция - расширение GCC */
 	int symb_fn( void* data, const char* sym, struct module* mod, unsigned long addr ){
 		if( strcmp( ( char* )data, sym ) == 0 ){
