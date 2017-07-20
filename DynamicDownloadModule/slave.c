@@ -18,3 +18,11 @@ static int __init mod_init( void ){
 static void __exit mod_exit( void ){
 	printk( "+ мoдуль %s выгружен\n", this_mod_file );
 }
+
+
+
+
+
+
+
+
