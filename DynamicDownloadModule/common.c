@@ -15,3 +15,7 @@ inline void __init set_mod_name( char* res, char* path ){
 		strncpy( res, pb, pe - pb );
 		sprintf( res + ( pe - pb ), "%s", ".ko" );
 }
+
+
+
+
