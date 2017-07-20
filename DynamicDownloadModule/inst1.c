@@ -68,8 +68,3 @@ if( buff == NULL ){
 
 	return res;
 }
-
-
-
-
-
