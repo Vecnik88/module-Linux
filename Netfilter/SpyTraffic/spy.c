@@ -8,11 +8,8 @@
 MODULE_AUTHOR("noname");
 MODULE_DESCRIPTION("ho-ho-ho");
 MODULE_LICENSE("GPL");
-unsigned int Hook_Func(uint hooknum, struct sk_buff* skb, 
-		       const struct net_device* in,
-		       const struct net_device* out,
-		       int(*okfn) (struct sk_buff*) ){
-	
+unsigned int Hook_Func( void* priv, struct sk_buff* skb, const struct nf_hook_state* state ){
+	// блокируем пакет
 	return NF_DROP;
 }
 struct nf_hook_ops bundle;
