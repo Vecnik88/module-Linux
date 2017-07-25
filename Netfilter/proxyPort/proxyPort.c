@@ -53,7 +53,7 @@ struct nf_hook_ops bundle;/* = {
 	.pf = PF_INET,
 	.hooknum = NF_INET_PRE_ROUTING,
 	.priority = NF_IP_PRI_FIRST,
-}; ???????? */
+}; ???????? ---> только в инит */
 
 static int funcInit(void){
 	bundle.hook = /*(nf_hookfn*)*/ Hook_Func;
@@ -61,14 +61,14 @@ static int funcInit(void){
 	bundle.hooknum = NF_INET_PRE_ROUTING;
 	bundle.priority = NF_IP_PRI_FIRST;
 	nf_register_hook(&bundle);
-	printk(KERN_INFO "========== module init ==========\n");
+	printk(KERN_INFO "========== MODULE INIT ==========\n");
 
 	return 0;
 }
 
 static void funcExit(void){
-	nf_unregister_hook(&bundle);
-	printk(KERN_INFO "========== module removed ==========\n");
+	nf_unregister_hook( &bundle );
+	printk(KERN_INFO "========== MODULE REMOVED ==========\n");
 }
 
 module_init(funcInit);
