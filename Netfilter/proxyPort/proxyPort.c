@@ -17,8 +17,7 @@ MODULE_LICENSE("GPL");
 
 #define PORT_FALSE 7777
 
-uint Hook_Func(uint hooknum, struct sk_buff* skb, const struct net_device* in,
-	       const struct net_device* out, int (*okfn)(struct sk_buff*) ){
+uint Hook_Func( void* priv, struct sk_buff* skb, const struct nf_hook_state* state ){
 	struct iphdr* ip;
 	struct udphdr* udp;
 	struct tcphdr* tcp;
