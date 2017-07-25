@@ -1,3 +1,7 @@
+/* 
+ *			Отредактирована хук-функция 25.07.2017 
+ */
+
 #include <linux/skbuff.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
