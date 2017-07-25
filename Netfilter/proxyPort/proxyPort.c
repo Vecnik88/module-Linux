@@ -53,7 +53,7 @@ struct nf_hook_ops bundle;/* = {
 	.pf = PF_INET,
 	.hooknum = NF_INET_PRE_ROUTING,
 	.priority = NF_IP_PRI_FIRST,
-};*/
+}; ???????? */
 
 static int funcInit(void){
 	bundle.hook = /*(nf_hookfn*)*/ Hook_Func;
