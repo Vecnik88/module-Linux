@@ -11,6 +11,3 @@ clean:
 	@rm -f .*.*.cmd *.symvers *~ *.*~ TODO.*
 	@rm -fR .tmp*
 	@rm -rf .tmp_versions
-
-
-
