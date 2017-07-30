@@ -1,14 +1,15 @@
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/cdev.h>
+#include <asm/uaccess.h>
+#include <linux/device.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/device.h>
-#include <linux/version.h>
-#include <linux/fs.h>
-#include <linux/slab.h>
-#include <asm/uaccess.h>
-#include <linux/cdev.h>
 #include <linux/string.h>
+#include <linux/version.h>
 
+/* Описание модуля */
 MODULE_VERSION( "1.0" );
 MODULE_LICENSE( "GPL" );
 MODULE_AUTHOR( "Vecnik88" );
@@ -19,14 +20,17 @@ MODULE_DESCRIPTION( "Символьное устройство" );
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
 #define DEBUG(...) if( debug ) printk( KERN_DEBUG "DEBUG MESSAGE " __VA_ARGS__ )
 
+#define DEVNAME "symbol_driver_test"			/* имя драйвера */
+#define MODNAME "my_symbol_driver_module"		/* имя модуля */
+
+#define BUF_SIZE 8192							/* размер буфера */
 #define DEVICE_FIRST 0							/* первый номер минор */
 #define DEVICE_COUNT 3							/* число поддерживаеых минор номеров */
-#define BUF_SIZE 8192							/* размер моего буфера, лучше делать через kmalloc() */
-#define MODNAME "my_symbol_driver_module"		/* имя моего модуля */
-#define DEVNAME "symbol_driver_test"			/* имя моего драйвера */
+
+
 /* Параметры, которые можно задать при загрузке модуля */
 
-static int major = 0;							// <---. старший номер нашего устройства
+static int major = 0;							// <---. старший номер устройства
 module_param( major, int, S_IRUGO );
 
 static int debug = 0;							// <---. для отладки модуля, если задать 1 то будут выводиться отладочные сообщения
@@ -47,15 +51,16 @@ static ssize_t dev_read( struct file* file, char* buf, size_t count, loff_t* ppo
 	if( ( count + *ppos) > strlen( my_buffer ) )
 		count = strlen( my_buffer );
 
-	res = copy_to_user( ( void* )buf, my_buffer + *ppos, count );
+	copy_to_user( ( void* )buf, my_buffer + *ppos, count );
 
 	DEBUG( "===== dev_read ---> res = %d =====\n", res );
 
-	put_user( '\n', buf + count );
+	/*put_user( '\n', buf + count );
 
-	res = count + 1;
+	res = count + 1;*/
 
-	*ppos = *ppos + count;
+	res = count;
+	*ppos += count;
 
 	DEBUG( "===== Read %d bytes =====\n", res );
 
@@ -65,13 +70,14 @@ static ssize_t dev_read( struct file* file, char* buf, size_t count, loff_t* ppo
 static ssize_t dev_write( struct file* file, const char* buf, size_t count, loff_t* ppos ){
 	int res = 0;
 
-	res = copy_from_user( my_buffer + *ppos, ( void* )buf, count );
+	copy_from_user( my_buffer + *ppos, ( void* )buf, count );
 
 	DEBUG( "===== dev_write ---> res = %d =====\n", res );
 
 	my_buffer[ res ] = '\0';
 
-	*ppos = *ppos + count;
+	res = count;
+	*ppos += count;
 
 	return res;
 }
