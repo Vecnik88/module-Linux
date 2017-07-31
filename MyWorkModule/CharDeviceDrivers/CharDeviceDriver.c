@@ -1,5 +1,13 @@
 /* Разобраться с методами poll and ioctl */
 
+
+
+
+
+
+
+
+
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/slab.h>
