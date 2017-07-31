@@ -58,12 +58,12 @@ static ssize_t dev_read( struct file* file, char* buf, size_t count, loff_t* ppo
 		return -ENOMEM;
 	}
 
-	if( ( count + *ppos) > strlen( my_buffer ) )
-		count = strlen( my_buffer );
+	if( ( count + *ppos) > sizeof( my_buffer ) )
+		count = sizeof( my_buffer );
 
 	copy_to_user( ( void* )buf, my_buffer + *ppos, count );
 
-	put_user( '0', buf + count );
+	put_user( '\n', buf + count );
 
 	res = count + 1;
 
