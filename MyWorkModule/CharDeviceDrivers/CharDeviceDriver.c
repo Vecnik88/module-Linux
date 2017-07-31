@@ -29,6 +29,14 @@ MODULE_DESCRIPTION( "Символьное устройство" );
 #define DEVICE_FIRST 0							/* первый номер минор */
 #define DEVICE_COUNT 3							/* число поддерживаеых минор номеров */
 
+/* Макросы для ioctl */
+#define CHAR_IOC_MAGIC 'k'
+
+#define CHAR_IOCRESET _IO( CHAR_IOC_MAGIC, 0 )
+#define CHAR_IOC_S_UANTUM _IOW( CHAR_IOC_MAGIC, 1, int )
+#define CHAR_IOC_T_QUANTUM _IO( CHAR_IOC_MAGIC, 2 )
+#define CHAR_IOC_G_QUANTUM _IOR( CHAR_IOC_MAGIC, 3, int )
+#define CHAR_IOC_MAXNR 5
 
 /* Параметры, которые можно задать при загрузке модуля */
 
@@ -40,7 +48,7 @@ module_param( debug, int, 0 );
 
 static int dev_open_count = 0;
 
-static char my_buffer[ BUF_SIZE ];
+static char my_buffer[ BUF_SIZE ] = " Hello world\n ";
 
 static ssize_t dev_read( struct file* file, char* buf, size_t count, loff_t* ppos ){
 	int res = 0;
@@ -55,13 +63,10 @@ static ssize_t dev_read( struct file* file, char* buf, size_t count, loff_t* ppo
 
 	copy_to_user( ( void* )buf, my_buffer + *ppos, count );
 
-	DEBUG( "===== dev_read ---> res = %d =====\n", res );
+	put_user( '0', buf + count );
 
-	/*put_user( '\n', buf + count );
+	res = count + 1;
 
-	res = count + 1;*/
-
-	res = count;
 	*ppos += count;
 
 	DEBUG( "===== Read %d bytes =====\n", res );
@@ -72,13 +77,16 @@ static ssize_t dev_read( struct file* file, char* buf, size_t count, loff_t* ppo
 static ssize_t dev_write( struct file* file, const char* buf, size_t count, loff_t* ppos ){
 	int res = 0;
 
+	if( count + *ppos > sizeof( my_buffer ) )
+		return -EINVAL;
+
 	copy_from_user( my_buffer + *ppos, ( void* )buf, count );
 
 	DEBUG( "===== dev_write ---> res = %d =====\n", res );
 
-	my_buffer[ res ] = '\0';
+	my_buffer[ count ] = '\0';
 
-	res = count;
+	res = count + 1;
 	*ppos += count;
 
 	return res;
