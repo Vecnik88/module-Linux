@@ -8,6 +8,10 @@
 #include <linux/hdreg.h>
 #include <linux/version.h>
 
+MODULE_VERSION( "1.0" );
+MODULE_LICENSE( "GPL" );
+MODULE_AUTHOR( "Vecnik88" );
+MODULE_DESCRIPTION( "Block device train" );
 
 #define MY_DEVICE_NAME "xd"
 #define DEV_MINORS 16
@@ -25,10 +29,10 @@ module_param( debug, int, 0 );							// <---. для отладки
 static int major = 0;									// <---. старший номер устройства
 module_param( major, int, 0 );
 
-static int hardsect_size = KERNEL_SECTOR_SIZE;
+static int hardsect_size = KERNEL_SECTOR_SIZE;			// <---. размер одного сектора
 module_param( hardsect_size, int, 0 );
 
-static int ndevices = 4;
+static int ndevices = 4;								// <---. кол-во разделов( они же minors )
 module_param( ndevices, int, 0 );
 
 enum { RM_SIMPLE = 0, RM_FULL = 1, RM_NOQUEUE = 2 };
@@ -48,8 +52,43 @@ struct disk_dev{
 
 static struct disk_dev* Devices = NULL;
 
-static void simple_request( struct request_queue * q ){
+static int transfer( struct disk_dev* dev, unsigned long sector,
+					 unsigned long nsect, char* buffer, int write ){
+	
+	unsigned long offset = sector * KERNEL_SECTOR_SIZE;
+	unsigned long nbytes = nsect * KERNEL_SECTOR_SIZE;
 
+	if( ( offset + nbytes ) > dev->size ){
+		ERR( "beyound-end write (%ld %ld)\n", offset, nbytes );
+		return -EIO;
+	}
+	if( write )
+		memcpy( dev->data + offset, buffer, nbytes );
+	else
+		memcpy( buffer, dev->data + offset, nbytes );
+
+	return 0;
+}
+
+static void simple_request( struct request_queue * q ){
+	struct request* req;
+	unsigned nr_sectors, sector;
+	DBG( "entering simple request routine\n" );
+	req = blk_fetch_request( q );
+	while( req ){
+		int ret = 0;
+		struct disk_dev* dev = req->rq_disk->private-data;
+		if( !blk_fs_reuest( req ) ){
+			ERR( "skip non-fs request\n" );
+			__blk_end_request( q );
+			continue;
+		}
+		nr_sectors = blk_rq_pos( req );
+		sector = blk_rq_pos( req );
+		ret = transfer( dev, sector, nr_sectors, req->buffer, rq_data_dir( req ) );
+		if( !__blk_end_request_cur( req, ret ) )
+			req = blk_fetch_request( q );
+	}
 }
 
 static void full_request( struct request_queue* q ){
@@ -87,6 +126,12 @@ static int my_ioctl( struct block_device *bdev, fmode_t mode,
          return -ENOTTY;
    }
 }
+
+static struct block_device_operations mybdrv_fops = {
+	.owner = THIS_MODULE,
+	.ioctl = my_ioctl,
+	.getgeo = my_getgeo
+};
 
 static void setup_device( struct disk_dev* dev, int which ){
 	memset( dev, 0, sizeof( struct disk_dev ) );
@@ -191,5 +236,11 @@ static void blk_exit( void ){
 	}
 
 	unregister_blkdev( major, MY_DEVICE_NAME );
+	kfree( Devices );
 }
+
+
+
+module_init( blk_init );
+module_exit( blk_exit );
 
