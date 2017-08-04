@@ -125,5 +125,71 @@ static void setup_device( struct disk_dev* dev, int which ){
 	blk_queue_logical_block_size( dev->queue, hardsect_size );
 	dev->queue->queuedata = dev;
 	dev->gd = allock_disk( DEV_MINORS );							// <---. число разделов при разбиении
+	if( ! dev->gd ){
+		ERR( "allock_disk failure\n" );
+		goto out_vfree;
+	}
+
+	dev->gd->major = major;
+	dev->gd->minors = DEV_MINORS;
+	dev->gd->first_minor = which * DEV_MINORS;
+	dev->gd->fops = &mybdrv_fops;
+	dev->gd->queue = dev->queue;
+	dev->gd->private_data = dev;
+	snprintf( dev->gd->disk_name, 32, MY_DEVICE_NAME"%c", which + 'a' );
+	set_capacity( dev->gd, nsectors * ( hardsec_size / KERNEL_SECTOR_SIZE ) );
+	add_disk( dev->gd );
+	return;
+
+out_vfree:
+	if( dev->data )
+		vfree( dev->data );
+}
+
+static int __init blk_init( void ){
+	int i = 0;
+	nsectors = diskmb * 1024 * 1024 / hardsec_size;
+	major = register_blkdev( major, MY_DEVICE_NAME );
+
+	if( major <= 0 ){
+		ERR( "unable to get major number\n" );
+		return -EBUSY;
+	}
+
+	Devices = kmalloc( ndevices * sizeof( struct disk_dev ), GFP_KERNEL );
+	if( Devices == NULL )
+		goto out_unregister;
+
+	for( i = 0; i < ndevices; ++i ){
+		setup_device( Devices + i, i );
+	}
+
+	return;
+
+out_unregister:
+	unregister_blkdev( major, MY_DEVICE_NAME );
+	return -ENOMEM;
+}
+
+static void blk_exit( void ){
+	int i = 0;
+	for( i = 0; i < ndevices; ++i ){
+		struct disk_dev* dev = Devices + i;
+		if( dev->gd ){
+			del_gendisk( dev->gd );
+			put_disk( dev->gd );
+		}
+
+		if( dev->queue ){
+			if( mode == RM_NOQUEUE )
+				blk_put_queue( dev->queue );
+			else
+				blk_cleanup_queue( dev->queue );
+		}
+		if( dev->data )
+			vfree( dev->data );
+	}
+
+	unregister_blkdev( major, MY_DEVICE_NAME );
 }
 
