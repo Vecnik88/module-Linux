@@ -100,13 +100,13 @@ static void simple_request( struct request_queue * q ){
 	}
 }
 
-/*static void full_request( struct request_queue* q ){
+static void full_request( struct request_queue* q ){
 
 }
 
 static void make_request( struct request_queue * q, struct bio * bio ){
 
-}*/
+}
 
 static int my_getgeo( struct block_device *bdev, struct hd_geometry *geo ) {
    unsigned long sectors = ( diskmb * 1024 ) * 2;
