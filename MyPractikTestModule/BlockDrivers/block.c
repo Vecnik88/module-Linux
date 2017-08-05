@@ -27,6 +27,8 @@ MODULE_DESCRIPTION( "Block device train" );
 
 #define blk_fs_request(rq)      ((rq)->cmd_type == REQ_TYPE_FS)
 
+char buffer[4*1024*1024];
+
 static int diskmb = 4;									// <---. размер диска в Mb
 module_param_named( size, diskmb, int, 0 );				
 
@@ -41,11 +43,6 @@ module_param( hardsect_size, int, 0 );
 
 static int ndevices = 4;								// <---. кол-во разделов( они же minors )
 module_param( ndevices, int, 0 );
-
-enum { RM_SIMPLE = 0, RM_FULL = 1, RM_NOQUEUE = 2 };
-
-static int mode = 0;//RM_SIMPLE;
-module_param( mode, int, 0 );
 
 static int nsectors;
 
@@ -78,7 +75,6 @@ static int transfer( struct disk_dev* dev, unsigned long sector,
 }
 
 static void simple_request( struct request_queue * q ){
-	char* buffer;
 	struct request* req;
 	unsigned nr_sectors, sector;
 	DBG( "entering simple request routine\n" );
@@ -99,14 +95,6 @@ static void simple_request( struct request_queue * q ){
 			req = blk_fetch_request( q );
 	}
 }
-
-/*static void full_request( struct request_queue* q ){
-
-}
-
-static int make_request( struct request_queue * q, struct bio * bio ){
-
-}*/
 
 static int my_getgeo( struct block_device *bdev, struct hd_geometry *geo ) {
    unsigned long sectors = ( diskmb * 1024 ) * 2;
@@ -139,7 +127,6 @@ static int my_ioctl( struct block_device *bdev, fmode_t mode,
 
 static struct block_device_operations mybdrv_fops = {
 	.owner = THIS_MODULE,
-	.ioctl = my_ioctl,
 	.getgeo = my_getgeo
 };
 
