@@ -25,6 +25,8 @@ MODULE_DESCRIPTION( "Block device train" );
 #define ERR(...) printk( KERN_ERR "ERROR " __VA_ARGS__ )
 #define DBG(...) if( debug > 0 ) printk( KERN_DEBUG "# " __VA_ARGS__ )
 
+#define blk_fs_request(rq)      ((rq)->cmd_type == REQ_TYPE_FS)
+
 static int diskmb = 4;									// <---. размер диска в Mb
 module_param_named( size, diskmb, int, 0 );				
 
@@ -83,7 +85,7 @@ static void simple_request( struct request_queue * q ){
 	while( req ){
 		int ret = 0;
 		struct disk_dev* dev = req->rq_disk->private_data;
-		if( !blk_fs_request( req ) ){
+		if( !( blk_fs_request( req ) ) ) {
 			ERR( "skip non-fs request\n" );
 			__blk_end_request( q );
 			continue;
@@ -214,7 +216,7 @@ static int __init blk_init( void ){
 		setup_device( Devices + i, i );
 	}
 
-	return;
+	return 0;
 
 out_unregister:
 	unregister_blkdev( major, MY_DEVICE_NAME );
