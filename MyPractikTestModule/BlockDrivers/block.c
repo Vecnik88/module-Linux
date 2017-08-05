@@ -194,7 +194,7 @@ out_unregister:
 	return -ENOMEM;
 }
 
-static void blk_exit( void ){
+static void __exit blk_exit( void ){
 	int i = 0;
 	for( i = 0; i < ndevices; ++i ){
 		struct disk_dev* dev = Devices + i;
