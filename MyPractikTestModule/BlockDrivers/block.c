@@ -104,7 +104,7 @@ static void full_request( struct request_queue* q ){
 
 }
 
-static void make_request( struct request_queue * q, struct bio * bio ){
+static int make_request( struct request_queue * q, struct bio * bio ){
 
 }
 
