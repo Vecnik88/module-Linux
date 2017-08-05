@@ -44,7 +44,7 @@ module_param( ndevices, int, 0 );
 
 enum { RM_SIMPLE = 0, RM_FULL = 1, RM_NOQUEUE = 2 };
 
-static int mode = RM_SIMPLE;
+static int mode = 0;//RM_SIMPLE;
 module_param( mode, int, 0 );
 
 static int nsectors;
@@ -100,13 +100,13 @@ static void simple_request( struct request_queue * q ){
 	}
 }
 
-static void full_request( struct request_queue* q ){
+/*static void full_request( struct request_queue* q ){
 
 }
 
 static void make_request( struct request_queue * q, struct bio * bio ){
 
-}
+}*/
 
 static int my_getgeo( struct block_device *bdev, struct hd_geometry *geo ) {
    unsigned long sectors = ( diskmb * 1024 ) * 2;
