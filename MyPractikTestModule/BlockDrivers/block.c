@@ -162,13 +162,13 @@ static void setup_device( struct disk_dev* dev, int which ){
 			break;
 
 		default:
-		LOG( "bad request mode %d, using simple\n", mode );
+			LOG( "bad request mode %d, using simple\n", mode );
 
 		case RM_SIMPLE:
-		dev->queue = blk_init_queue( simple_request, &dev->lock );
-		if( dev->queue == NULL )
-			goto out_vfree;
-		break;
+			dev->queue = blk_init_queue( simple_request, &dev->lock );
+			if( dev->queue == NULL )
+				goto out_vfree;
+			break;
 	}
 
 	blk_queue_logical_block_size( dev->queue, hardsect_size );
