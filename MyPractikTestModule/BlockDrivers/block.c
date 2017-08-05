@@ -87,10 +87,11 @@ static void simple_request( struct request_queue * q ){
 		struct disk_dev* dev = req->rq_disk->private_data;
 		if( !( blk_fs_request( req ) ) ) {
 			ERR( "skip non-fs request\n" );
-			__blk_end_request( q );
+			__blk_end_request_all( req, -EIO );
+			req = blk_fetch_request( q );
 			continue;
 		}
-		nr_sectors = blk_rq_pos( req );
+		nr_sectors = blk_rq_cur_sectors( req );
 		sector = blk_rq_pos( req );
 		ret = transfer( dev, sector, nr_sectors, req->buffer, rq_data_dir( req ) );
 		if( !__blk_end_request_cur( req, ret ) )
