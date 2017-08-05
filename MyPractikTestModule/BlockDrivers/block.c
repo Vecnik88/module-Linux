@@ -203,12 +203,8 @@ static void blk_exit( void ){
 			put_disk( dev->gd );
 		}
 
-		if( dev->queue ){
-			if( mode == RM_NOQUEUE )
-				blk_put_queue( dev->queue );
-			else
-				blk_cleanup_queue( dev->queue );
-		}
+		blk_cleanup_queue( dev->queue );
+		
 		if( dev->data )
 			vfree( dev->data );
 	}
