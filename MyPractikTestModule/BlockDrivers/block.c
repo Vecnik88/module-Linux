@@ -83,7 +83,7 @@ static void simple_request( struct request_queue * q ){
 	while( req ){
 		int ret = 0;
 		struct disk_dev* dev = req->rq_disk->private_data;
-		if( !blk_fs_reqest( req ) ){
+		if( !blk_fs_request( req ) ){
 			ERR( "skip non-fs request\n" );
 			__blk_end_request( q );
 			continue;
@@ -157,7 +157,7 @@ static void setup_device( struct disk_dev* dev, int which ){
 			break;
 
 		case RM_FULL:
-			dev->queue = blk_init_queue( full_request, &dev_lock );
+			dev->queue = blk_init_queue( full_request, &dev->lock );
 			if( dev->queue == NULL )
 				goto out_vfree;
 			break;
@@ -174,7 +174,7 @@ static void setup_device( struct disk_dev* dev, int which ){
 
 	blk_queue_logical_block_size( dev->queue, hardsect_size );
 	dev->queue->queuedata = dev;
-	dev->gd = allock_disk( DEV_MINORS );							// <---. число разделов при разбиении
+	dev->gd = alloc_disk( DEV_MINORS );							// <---. число разделов при разбиении
 	if( ! dev->gd ){
 		ERR( "allock_disk failure\n" );
 		goto out_vfree;
@@ -187,7 +187,7 @@ static void setup_device( struct disk_dev* dev, int which ){
 	dev->gd->queue = dev->queue;
 	dev->gd->private_data = dev;
 	snprintf( dev->gd->disk_name, 32, MY_DEVICE_NAME"%c", which + 'a' );
-	set_capacity( dev->gd, nsectors * ( hardsec_size / KERNEL_SECTOR_SIZE ) );
+	set_capacity( dev->gd, nsectors * ( hardsect_size / KERNEL_SECTOR_SIZE ) );
 	add_disk( dev->gd );
 	return;
 
@@ -198,7 +198,7 @@ out_vfree:
 
 static int __init blk_init( void ){
 	int i = 0;
-	nsectors = diskmb * 1024 * 1024 / hardsec_size;
+	nsectors = diskmb * 1024 * 1024 / hardsect_size;
 	major = register_blkdev( major, MY_DEVICE_NAME );
 
 	if( major <= 0 ){
