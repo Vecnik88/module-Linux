@@ -78,6 +78,7 @@ static int transfer( struct disk_dev* dev, unsigned long sector,
 }
 
 static void simple_request( struct request_queue * q ){
+	char* buffer;
 	struct request* req;
 	unsigned nr_sectors, sector;
 	DBG( "entering simple request routine\n" );
@@ -93,7 +94,7 @@ static void simple_request( struct request_queue * q ){
 		}
 		nr_sectors = blk_rq_cur_sectors( req );
 		sector = blk_rq_pos( req );
-		ret = transfer( dev, sector, nr_sectors, req->buffer, rq_data_dir( req ) );
+		ret = transfer( dev, sector, nr_sectors, buffer, rq_data_dir( req ) );
 		if( !__blk_end_request_cur( req, ret ) )
 			req = blk_fetch_request( q );
 	}
@@ -114,6 +115,7 @@ static int my_getgeo( struct block_device *bdev, struct hd_geometry *geo ) {
    geo->sectors = 16;
    geo->cylinders = sectors / geo->heads / geo->sectors;
    geo->start = geo->sectors;
+
    return 0;
 };
 
