@@ -100,13 +100,13 @@ static void simple_request( struct request_queue * q ){
 	}
 }
 
-static void full_request( struct request_queue* q ){
+/*static void full_request( struct request_queue* q ){
 
 }
 
 static int make_request( struct request_queue * q, struct bio * bio ){
 
-}
+}*/
 
 static int my_getgeo( struct block_device *bdev, struct hd_geometry *geo ) {
    unsigned long sectors = ( diskmb * 1024 ) * 2;
@@ -153,29 +153,10 @@ static void setup_device( struct disk_dev* dev, int which ){
 	}
 
 	spin_lock_init( &dev->lock );
-	switch( mode ){
-		case RM_NOQUEUE:
-			dev->queue = blk_alloc_queue( GFP_KERNEL );
-			if( dev->queue == NULL )
-				goto out_vfree;
-			blk_queue_make_request( dev->queue, make_request );
-			break;
-
-		case RM_FULL:
-			dev->queue = blk_init_queue( full_request, &dev->lock );
-			if( dev->queue == NULL )
-				goto out_vfree;
-			break;
-
-		default:
-			LOG( "bad request mode %d, using simple\n", mode );
-
-		case RM_SIMPLE:
-			dev->queue = blk_init_queue( simple_request, &dev->lock );
-			if( dev->queue == NULL )
-				goto out_vfree;
-			break;
-	}
+	
+	dev->queue = blk_init_queue( simple_request, &dev->lock );
+	if( dev->queue == NULL )
+		goto out_vfree;
 
 	blk_queue_logical_block_size( dev->queue, hardsect_size );
 	dev->queue->queuedata = dev;
