@@ -1,11 +1,14 @@
-/* Разработка блочного драйвера :) */
+/* 		
+ *			Модуль блочного устройства, создание сырого устройства /dev/xxx 
+ *				с возможностью выполнения на нем блочных операций 
+ */
 
-#include <linux/module.h>
-#include <linux/vmalloc.h>
-#include <linux/blkdev.h>
 #include <linux/genhd.h>
 #include <linux/errno.h>
 #include <linux/hdreg.h>
+#include <linux/module.h>
+#include <linux/blkdev.h>
+#include <linux/vmalloc.h>
 #include <linux/version.h>
 
 MODULE_VERSION( "1.0" );
@@ -13,18 +16,19 @@ MODULE_LICENSE( "GPL" );
 MODULE_AUTHOR( "Vecnik88" );
 MODULE_DESCRIPTION( "Block device train" );
 
-#define MY_DEVICE_NAME "xd"
-#define DEV_MINORS 16
+#define DEV_MINORS 16							// <---. кол-во разделов на диске( не всегда играет роль, их можно сделать не больше определенного кол-ва )
+#define MY_DEVICE_NAME "xd"						// <---. родовое имя устройства( sda, sdb и тд )
 
+/* макросы для удобства и краткости сообщений в ядро */
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
 #define ERR(...) printk( KERN_ERR "ERROR " __VA_ARGS__ )
 #define DEBUG(...) if( debug > 0 ) printk( KERN_DEBUG "# " __VA_ARGS__ )
 
-static int diskmb = 4;
-module_param_named( size, diskmb, int, 0 );				// <---. размер диска в Mb
+static int diskmb = 4;									// <---. размер диска в Mb
+module_param_named( size, diskmb, int, 0 );				
 
-static int debug = 0;
-module_param( debug, int, 0 );							// <---. для отладки
+static int debug = 0;									// <---. для отладки
+module_param( debug, int, 0 );							
 
 static int major = 0;									// <---. старший номер устройства
 module_param( major, int, 0 );
@@ -238,8 +242,6 @@ static void blk_exit( void ){
 	unregister_blkdev( major, MY_DEVICE_NAME );
 	kfree( Devices );
 }
-
-
 
 module_init( blk_init );
 module_exit( blk_exit );
