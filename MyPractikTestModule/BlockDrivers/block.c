@@ -18,11 +18,12 @@ MODULE_DESCRIPTION( "Block device train" );
 
 #define DEV_MINORS 16							// <---. кол-во разделов на диске( не всегда играет роль, их можно сделать не больше определенного кол-ва )
 #define MY_DEVICE_NAME "xd"						// <---. родовое имя устройства( sda, sdb и тд )
+#define KERNEL_SECTOR_SIZE 512					// <---. размер сектора
 
 /* макросы для удобства и краткости сообщений в ядро */
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
 #define ERR(...) printk( KERN_ERR "ERROR " __VA_ARGS__ )
-#define DEBUG(...) if( debug > 0 ) printk( KERN_DEBUG "# " __VA_ARGS__ )
+#define DBG(...) if( debug > 0 ) printk( KERN_DEBUG "# " __VA_ARGS__ )
 
 static int diskmb = 4;									// <---. размер диска в Mb
 module_param_named( size, diskmb, int, 0 );				
@@ -41,7 +42,7 @@ module_param( ndevices, int, 0 );
 
 enum { RM_SIMPLE = 0, RM_FULL = 1, RM_NOQUEUE = 2 };
 
-staticint mode = RM_SIMPLE;
+static int mode = RM_SIMPLE;
 module_param( mode, int, 0 );
 
 static int nsectors;
@@ -81,8 +82,8 @@ static void simple_request( struct request_queue * q ){
 	req = blk_fetch_request( q );
 	while( req ){
 		int ret = 0;
-		struct disk_dev* dev = req->rq_disk->private-data;
-		if( !blk_fs_reuest( req ) ){
+		struct disk_dev* dev = req->rq_disk->private_data;
+		if( !blk_fs_reqest( req ) ){
 			ERR( "skip non-fs request\n" );
 			__blk_end_request( q );
 			continue;
