@@ -188,17 +188,60 @@ static int __init network_init( void ){
 	}
 
 	priv = netdev_priv( child );								/* возвращает указатель на структуру priv, где мы можем хранить свои любые произвольные данные */
-	priv->parent = dev_get_by_name( &init_net, link );			/* определяем link родительским устройство( просто заносим данные ) */
+	priv->parent = dev_get_by_name( &init_net, link );			/* определяем link родительским устройство( ф-ция ищет по имени девайс и возвращает указатель на него ) */
+	if( !priv->parent ) {
+    	ERR( "%s: no such net: %s", THIS_MODULE->name, link );
+     	errno = -ENODEV; 
+    	goto err;
+   }
+
+   if( priv->parent->type != ARPHRD_ETHER && priv->parent->type != ARPHRD_LOOPBACK ) {
+    	ERR( "%s: illegal net type", THIS_MODULE->name );
+    	errno = -EINVAL; 
+    	goto err;
+   }
+
+	memcpy( child->dev_addr, priv->parent->dev_addr, ETH_ALEN );
+	memcpy( child->broadcast, priv->parent->broadcast, ETH_ALEN );
+
+	if( ( errno = dev_alloc_name( child, child->name ) ) ) {	 
+	/* dev_alloc_name присваивает устройству имя, 
+		просматривая свою таблицу и вставляя его в подходящее место.
+		Формат строки "string%d" - ф-ция сама назначит подходящий номер 
+	 */
+		ERR( "%s: allocate name, error %i", THIS_MODULE->name, errno );
+		err = -EIO; 
+		goto errno;
+	}
+	register_netdev( child );
+	arp_proto.dev = udp_proto.dev = tcp_proto.dev = ip4_proto.dev = priv->parent; 				// <---. отслеживать будет трафик только с родительского интерфейса
+
+	/* добавляем наши обработчики фреймов */
+	dev_add_pack( &arp_proto );									
+	dev_add_pack( &ip4_proto );
+	dev_add_pack( &udp_proto );
+	dev_add_pack( &tcp_proto );
 
 	LOG( "===== MODULE NETWORK LOADED =====\n" );
 
 	return 0;
+
+err:
+	free_netdev( child );
+	return errno;
 }
 
 static void __exit network_exit( void ){
+	struct priv *priv= netdev_priv( child );
 
+	dev_remove_pack( &arp_proto );    // удалить обработчик фреймов
+	dev_remove_pack( &ip4_proto );    // удалить обработчик фреймов
+	dev_remove_pack( &udp_proto );    // удалить обработчик фреймов
+	dev_remove_pack( &tcp_proto );    // удалить обработчик фреймов
 
-
+	unregister_netdev( child );
+	dev_put( priv->parent );
+	free_netdev( child );
 
 	LOG( "===== MODULE NETWORK UNLOADED =====\n" );
 }
