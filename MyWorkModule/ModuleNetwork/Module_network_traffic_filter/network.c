@@ -1,5 +1,7 @@
 										/* Модуль ядра с фильтрацией трафика различных пакетов */
 
+										/* !!!!!!!!!!!!!!!! доработать ф-ции обработчики !!!!!!!!!!!!! */
+
 #include <net/arp.h>
 #include <linux/ip.h>
 #include <linux/module.h>
@@ -234,13 +236,13 @@ err:
 static void __exit network_exit( void ){
 	struct priv *priv= netdev_priv( child );
 
-	dev_remove_pack( &arp_proto );    // удалить обработчик фреймов
-	dev_remove_pack( &ip4_proto );    // удалить обработчик фреймов
-	dev_remove_pack( &udp_proto );    // удалить обработчик фреймов
-	dev_remove_pack( &tcp_proto );    // удалить обработчик фреймов
+	dev_remove_pack( &arp_proto );    							// удалить обработчик фреймов
+	dev_remove_pack( &ip4_proto );    							// удалить обработчик фреймов
+	dev_remove_pack( &udp_proto );    							// удалить обработчик фреймов
+	dev_remove_pack( &tcp_proto );    							// удалить обработчик фреймов
 
 	unregister_netdev( child );
-	dev_put( priv->parent );
+	dev_put( priv->parent );									/* удаляет созданную ссылку на устройство, чтобы оно было нормально освобождено " this_cpu_dec(*dev->pcpu_refcnt); "*/
 	free_netdev( child );
 
 	LOG( "===== MODULE NETWORK UNLOADED =====\n" );
