@@ -187,7 +187,9 @@ static int __init network_init( void ){
 		return -ENOMEM;
 	}
 
-	priv = netdev_priv( child );
+	priv = netdev_priv( child );								/* возвращает указатель на структуру priv, где мы можем хранить свои любые произвольные данные */
+	priv->parent = dev_get_by_name( &init_net, link );			/* определяем link родительским устройство( просто заносим данные ) */
+
 	LOG( "===== MODULE NETWORK LOADED =====\n" );
 
 	return 0;
