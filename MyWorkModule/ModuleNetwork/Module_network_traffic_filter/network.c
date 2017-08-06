@@ -177,11 +177,17 @@ static int __init network_init( void ){
 
 /* создаем виртуальный интерфейс, после версии ядра 3.17.0 API изменился */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0))
-   child = alloc_netdev( sizeof( struct priv ), ifstr, setup );
+	child = alloc_netdev( sizeof( struct priv ), ifstr, setup );
 #else
-   child = alloc_netdev( sizeof( struct priv ), ifstr, NET_NAME_UNKNOWN, setup );
+	child = alloc_netdev( sizeof( struct priv ), ifstr, NET_NAME_UNKNOWN, setup );
 #endif
 
+	if( child == NULL ){
+		ERR( "Error: alloc_netdev: %s" THIS_MODULE->name );
+		return -ENOMEM;
+	}
+
+	priv = netdev_priv( child );
 	LOG( "===== MODULE NETWORK LOADED =====\n" );
 
 	return 0;
