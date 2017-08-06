@@ -170,7 +170,17 @@ void setup( struct net_device *dev ){
 }
 
 static int __init network_init( void ){
+	int errno = 0;
+	struct priv* priv;
+	char ifstr[ 40 ] = "";
+	sprintf( ifstr, "%s%s", ifname, "%d" );
 
+/* создаем виртуальный интерфейс, после версии ядра 3.17.0 API изменился */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0))
+   child = alloc_netdev( sizeof( struct priv ), ifstr, setup );
+#else
+   child = alloc_netdev( sizeof( struct priv ), ifstr, NET_NAME_UNKNOWN, setup );
+#endif
 
 	LOG( "===== MODULE NETWORK LOADED =====\n" );
 
