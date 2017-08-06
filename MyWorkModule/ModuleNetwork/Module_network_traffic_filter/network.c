@@ -99,12 +99,36 @@ int udp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обраб�
 
 }
 
+static struct packet_type udp_proto = {
+	.type = __constant_htons( ETH_P_ARP ),
+	.dev = NULL,
+	.func = arp_rcv_pack,
+	.af_packet_priv = ( void* ) 1,
+	.list_head = NULL
+}; 
+
 int tcp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов tcp */
 				  struct packet_type* pkt, struct net_device* odev ){
 
 }
 
+static struct packet_type tcp_proto = {
+	.type = __constant_htons( ETH_P_ARP ),
+	.dev = NULL,
+	.func = arp_rcv_pack,
+	.af_packet_priv = ( void* ) 1,
+	.list_head = NULL
+}; 
+
 int ip_v4_rcv_pack( struct sk_buff* skb, struct net_device* dev,			/* обработчик пакетов ip_v4 */
 				  struct packet_type* pkt, struct net_device* odev ){
 
 }
+
+static struct packet_type ip_v4_proto = {
+	.type = __constant_htons( ETH_P_ARP ),
+	.dev = NULL,
+	.func = arp_rcv_pack,
+	.af_packet_priv = ( void* ) 1,
+	.list_head = NULL
+}; 
