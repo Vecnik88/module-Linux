@@ -80,3 +80,31 @@ static struct net_device_ops network_function = {
 	.ndo_get_stats = network_get_stats,
 	.ndo_start_xmit = network_start_xmit
 };
+
+int arp_rcv_pack( struct sk_buff* skb, struct net_device* dev,
+				  struct packet_type* pkt, struct net_device* odev ){		/* обработчик пакетов arp */
+
+}
+
+static struct packet_type arp_proto = {
+	.type = __constant_htons( ETH_P_ARP ),
+	.dev = NULL,
+	.func = arp_rcv_pack,
+	.af_packet_priv = ( void* ) 1,
+	.list_head = NULL
+}; 
+
+int udp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов udp */
+				  struct packet_type* pkt, struct net_device* odev ){
+
+}
+
+int tcp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов tcp */
+				  struct packet_type* pkt, struct net_device* odev ){
+
+}
+
+int ip_v4_rcv_pack( struct sk_buff* skb, struct net_device* dev,			/* обработчик пакетов ip_v4 */
+				  struct packet_type* pkt, struct net_device* odev ){
+
+}
