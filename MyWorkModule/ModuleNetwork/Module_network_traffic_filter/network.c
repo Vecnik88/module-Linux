@@ -84,6 +84,12 @@ static struct net_device_ops network_function = {
 int arp_rcv_pack( struct sk_buff* skb, struct net_device* dev,
 				  struct packet_type* pkt, struct net_device* odev ){		/* обработчик пакетов arp */
 
+
+
+
+	kfree_skb( skb );
+	
+	return skb->len;
 }
 
 static struct packet_type arp_proto = {
@@ -97,12 +103,18 @@ static struct packet_type arp_proto = {
 int udp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов udp */
 				  struct packet_type* pkt, struct net_device* odev ){
 
+
+
+
+	kfree_skb( skb );
+	
+	return skb->len;
 }
 
 static struct packet_type udp_proto = {
-	.type = __constant_htons( ETH_P_ARP ),
+	.type = __constant_htons( ETH_P_UDP ),
 	.dev = NULL,
-	.func = arp_rcv_pack,
+	.func = udp_rcv_pack,
 	.af_packet_priv = ( void* ) 1,
 	.list_head = NULL
 }; 
@@ -110,12 +122,18 @@ static struct packet_type udp_proto = {
 int tcp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов tcp */
 				  struct packet_type* pkt, struct net_device* odev ){
 
+
+
+
+	kfree_skb( skb );
+	
+	return skb->len;
 }
 
 static struct packet_type tcp_proto = {
-	.type = __constant_htons( ETH_P_ARP ),
+	.type = __constant_htons( ETH_P_TCP ),
 	.dev = NULL,
-	.func = arp_rcv_pack,
+	.func = tcp_rcv_pack,
 	.af_packet_priv = ( void* ) 1,
 	.list_head = NULL
 }; 
@@ -123,12 +141,41 @@ static struct packet_type tcp_proto = {
 int ip_v4_rcv_pack( struct sk_buff* skb, struct net_device* dev,			/* обработчик пакетов ip_v4 */
 				  struct packet_type* pkt, struct net_device* odev ){
 
+
+	
+	kfree_skb( skb );
+	
+	return skb->len;
 }
 
 static struct packet_type ip_v4_proto = {
-	.type = __constant_htons( ETH_P_ARP ),
+	.type = __constant_htons( ETH_P_IP ),
 	.dev = NULL,
-	.func = arp_rcv_pack,
+	.func = ip_v4_rcv_pack,
 	.af_packet_priv = ( void* ) 1,
 	.list_head = NULL
 }; 
+
+static int __init network_init( void ){
+
+
+	LOG( "===== MODULE NETWORK LOADED =====\n" );
+
+	return 0;
+}
+
+static void __exit network_exit( void ){
+
+
+
+
+	LOG( "===== MODULE NETWORK UNLOADED =====\n" );
+}
+
+module_init( network_init );
+module_exit( network_exit );
+
+MODULE_LICENSE( "GPL" );
+MODULE_VERSION( "1.2" );
+MODULE_AUTHOR( "Vecnik88" );
+MODULE_DESCRIPTION( "Filter traffice for the virtual interface" );
