@@ -156,6 +156,19 @@ static struct packet_type ip_v4_proto = {
 	.list_head = NULL
 }; 
 
+void setup( struct net_device *dev ){
+      int i = 0;
+
+      ether_setup( dev );
+
+      memset( netdev_priv( dev ), 0, sizeof( struct priv ) );
+
+      dev->netdev_ops = &network_function;
+      for( i = 0; i < ETH_ALEN; ++i )
+         dev->dev_addr[ i ] = (char)(i + 10 );
+
+}
+
 static int __init network_init( void ){
 
 
