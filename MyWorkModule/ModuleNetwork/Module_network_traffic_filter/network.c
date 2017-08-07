@@ -1,6 +1,7 @@
-										/* Модуль ядра с фильтрацией трафика различных пакетов */
-
-										/* !!!!!!!!!!!!!!!! доработать ф-ции обработчики !!!!!!!!!!!!! */
+										/* 				Модуль ядра с фильтрацией трафика различных пакетов, 
+											Скелет, в котором можно делать абсолютно все что нужно с приходящими пакетами
+											Через хук-функцию удобнее, но когда нужен дополнительный сетевой интерфейс, можно поступить и так
+										 */
 
 #include <net/arp.h>
 #include <linux/ip.h>
@@ -53,7 +54,7 @@ static int network_open( struct net_device* dev ){		/* Вызывается пр
 	return 0;
 }
 
-static int network_stop( struct net_device* dev ){			/* Вызывается при DOWN сетевого интерфейса */
+static int network_stop( struct net_device* dev ){		/* Вызывается при DOWN сетевого интерфейса */
 	LOG( "Virtual interface %s DOWN.\n", dev->name );
 
 	netif_stop_queue( dev );
@@ -86,8 +87,11 @@ static struct net_device_ops network_function = {
 int arp_rcv_pack( struct sk_buff* skb, struct net_device* dev,
 				  struct packet_type* pkt, struct net_device* odev ){		/* обработчик пакетов arp */
 
+	/* Здесь мы можем делать все что нам нужно с пакетами, подмену пакетов, блокирование и тд. 
+		Проще это все делать через хук-функцию( намного проще, но такой способ тоже иногда необходим :) ) 
+	 */
 
-
+	LOG( "Packet is arp, len packet = %d\n", skb->len );
 
 	kfree_skb( skb );
 	
@@ -105,8 +109,12 @@ static struct packet_type arp_proto = {
 int udp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов udp */
 				  struct packet_type* pkt, struct net_device* odev ){
 
+	/* 
+		Здесь мы можем делать все что нам нужно с пакетами, подмену пакетов, блокирование и тд. 
+		Проще это все делать через хук-функцию( намного проще, но такой способ тоже иногда необходим :) ) 
+	 */
 
-
+	LOG( "Packet is udp, len packet = %d\n", skb->len );
 
 	kfree_skb( skb );
 	
@@ -121,21 +129,25 @@ static struct packet_type udp_proto = {
 	.list_head = NULL
 }; 
 
-int tcp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов tcp */
+int icmp_rcv_pack( struct sk_buff* skb, struct net_device* dev,				/* обработчик пакетов icmp */
 				  struct packet_type* pkt, struct net_device* odev ){
 
+	/*	
+		Здесь мы можем делать все что нам нужно с пакетами, подмену пакетов, блокирование и тд. 
+		Проще это все делать через хук-функцию( намного проще, но такой способ тоже иногда необходим :) ) 
+	 */
 
-
+	LOG( "Packet is ICMP, len packet = %d\n", skb->len );
 
 	kfree_skb( skb );
 	
 	return skb->len;
 }
 
-static struct packet_type tcp_proto = {
-	.type = __constant_htons( ETH_P_TCP ),
+static struct packet_type icmp_proto = {
+	.type = __constant_htons( ETH_P_ICMP ),
 	.dev = NULL,
-	.func = tcp_rcv_pack,
+	.func = icmp_rcv_pack,
 	.af_packet_priv = ( void* ) 1,
 	.list_head = NULL
 }; 
@@ -143,8 +155,12 @@ static struct packet_type tcp_proto = {
 int ip_v4_rcv_pack( struct sk_buff* skb, struct net_device* dev,			/* обработчик пакетов ip_v4 */
 				  struct packet_type* pkt, struct net_device* odev ){
 
+	/* 
+		Здесь мы можем делать все что нам нужно с пакетами, подмену пакетов, блокирование и тд. 
+		Проще это все делать через хук-функцию( намного проще, но такой способ тоже иногда необходим :) ) 
+	 */
+	LOG( "Packet is ip_v4, len packet = %d\n", skb->len );
 
-	
 	kfree_skb( skb );
 	
 	return skb->len;
@@ -216,13 +232,13 @@ static int __init network_init( void ){
 		goto errno;
 	}
 	register_netdev( child );
-	arp_proto.dev = udp_proto.dev = tcp_proto.dev = ip4_proto.dev = priv->parent; 				// <---. отслеживать будет трафик только с родительского интерфейса
+	arp_proto.dev = udp_proto.dev = icmp_proto.dev = ip4_proto.dev = priv->parent; 				// <---. отслеживать будет трафик только с родительского интерфейса
 
 	/* добавляем наши обработчики фреймов */
 	dev_add_pack( &arp_proto );									
 	dev_add_pack( &ip4_proto );
 	dev_add_pack( &udp_proto );
-	dev_add_pack( &tcp_proto );
+	dev_add_pack( &icmp_proto );
 
 	LOG( "===== MODULE NETWORK LOADED =====\n" );
 
@@ -239,7 +255,7 @@ static void __exit network_exit( void ){
 	dev_remove_pack( &arp_proto );    							// удалить обработчик фреймов
 	dev_remove_pack( &ip4_proto );    							// удалить обработчик фреймов
 	dev_remove_pack( &udp_proto );    							// удалить обработчик фреймов
-	dev_remove_pack( &tcp_proto );    							// удалить обработчик фреймов
+	dev_remove_pack( &icmp_proto );    							// удалить обработчик фреймов
 
 	unregister_netdev( child );
 	dev_put( priv->parent );									/* удаляет созданную ссылку на устройство, чтобы оно было нормально освобождено " this_cpu_dec(*dev->pcpu_refcnt); "*/
@@ -254,4 +270,4 @@ module_exit( network_exit );
 MODULE_LICENSE( "GPL" );
 MODULE_VERSION( "1.2" );
 MODULE_AUTHOR( "Vecnik88" );
-MODULE_DESCRIPTION( "Filter traffice for the virtual interface" );
+MODULE_DESCRIPTION( "Filter traffic for the virtual interface" );
