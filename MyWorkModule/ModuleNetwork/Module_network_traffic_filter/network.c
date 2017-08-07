@@ -187,14 +187,14 @@ static int __init network_init( void ){
 	 */
 		ERR( "%s: allocate name, error %i", THIS_MODULE->name, errno );
 		errno = -EIO; 
-		goto errno;
+		goto err;
 	}
 	register_netdev( child );
 	arp_proto.dev = ip_v4_proto.dev = priv->parent; 				// <---. отслеживать будет трафик только с родительского интерфейса
 
 	/* добавляем наши обработчики фреймов */
 	dev_add_pack( &arp_proto );									
-	dev_add_pack( &ip4_proto );
+	dev_add_pack( &ip_v4_proto );
 
 	LOG( "===== MODULE NETWORK LOADED =====\n" );
 
@@ -209,7 +209,7 @@ static void __exit network_exit( void ){
 	struct priv *priv= netdev_priv( child );
 
 	dev_remove_pack( &arp_proto );    							// удалить обработчик фреймов
-	dev_remove_pack( &ip4_proto );    							// удалить обработчик фреймов
+	dev_remove_pack( &ip_v4_proto );    							// удалить обработчик фреймов
 
 	unregister_netdev( child );
 	dev_put( priv->parent );									/* удаляет созданную ссылку на устройство, чтобы оно было нормально освобождено " this_cpu_dec(*dev->pcpu_refcnt); "*/
