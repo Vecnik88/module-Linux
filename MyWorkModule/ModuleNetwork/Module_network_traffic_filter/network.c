@@ -7,6 +7,7 @@
 #include <net/arp.h>
 #include <linux/ip.h>
 #include <linux/module.h>
+#include <linux/kernel.h>
 #include <linux/version.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
@@ -66,7 +67,7 @@ static int network_stop( struct net_device* dev ){		/* Вызывается пр
 static struct net_device_stats* network_get_stats( struct net_device *dev ) {		/* Статитистика виртуального сетевого интерфейса */
 	struct priv* priv = netdev_priv( dev );
 
-	return &( pric->stats );
+	return &( priv->stats );
 }
 
 static netdev_tx_t network_start_xmit( struct sk_buff* skb, struct net_device* dev ){
