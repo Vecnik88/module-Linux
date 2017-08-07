@@ -26,7 +26,7 @@ module_param( ifname, charp, 0 );
 static int debug = 0;									/* для отладки модулей */
 module_param( debug, int, 0 );
 
-struct net_device* virt = NULL;
+struct net_device* child = NULL;
 
 struct priv{											/* структура для различной информации нашего интерфеса, здесь можно размещать любую информацию, размещается в хвосте при создании виртуального интерфейса */
 	struct net_device* parent;							/* родительский интерфейс */
@@ -64,7 +64,9 @@ static int network_stop( struct net_device* dev ){		/* Вызывается пр
 }
 
 static struct net_device_stats* network_get_stats( struct net_device *dev ) {		/* Статитистика виртуального сетевого интерфейса */
-   return &( netdev_priv( dev )->stats );
+	struct priv* priv = netdev_priv( dev );
+
+	return &( pric->stats );
 }
 
 static netdev_tx_t network_start_xmit( struct sk_buff* skb, struct net_device* dev ){
@@ -104,8 +106,8 @@ static struct packet_type arp_proto = {
 	.type = __constant_htons( ETH_P_ARP ),
 	.dev = NULL,
 	.func = arp_rcv_pack,
-	.af_packet_priv = ( void* ) 1,
-	.list_head = NULL
+	.id_match = ( void* ) 1,
+	.af_packet_priv = NULL,
 }; 
 
 int ip_v4_rcv_pack( struct sk_buff* skb, struct net_device* dev,			/* обработчик пакетов ip_v4 */
@@ -126,8 +128,8 @@ static struct packet_type ip_v4_proto = {
 	.type = __constant_htons( ETH_P_IP ),
 	.dev = NULL,
 	.func = ip_v4_rcv_pack,
-	.af_packet_priv = ( void* ) 1,
-	.list_head = NULL
+	.id_match = ( void* ) 1,
+	.af_packet_priv = NULL,
 }; 
 
 void setup( struct net_device *dev ){
@@ -184,11 +186,11 @@ static int __init network_init( void ){
 		Формат строки "string%d" - ф-ция сама назначит подходящий номер 
 	 */
 		ERR( "%s: allocate name, error %i", THIS_MODULE->name, errno );
-		err = -EIO; 
+		errno = -EIO; 
 		goto errno;
 	}
 	register_netdev( child );
-	arp_proto.dev = udp_proto.dev = priv->parent; 				// <---. отслеживать будет трафик только с родительского интерфейса
+	arp_proto.dev = ip_v4_proto.dev = priv->parent; 				// <---. отслеживать будет трафик только с родительского интерфейса
 
 	/* добавляем наши обработчики фреймов */
 	dev_add_pack( &arp_proto );									
