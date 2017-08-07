@@ -46,8 +46,8 @@ static char* strIP( u32 addr ) {     					/* диагностика IP в точ
 static int network_open( struct net_device* dev ){		/* Вызывается при поднятии сетевого интерфейса(UP) */
 	LOG( "Virtual interface %s UP.\n", dev->name );
 
-	struct in_device *in_dev = dev->ip_ptr;
-	struct in_ifaddr *ifa = in_dev->ifa_list;
+	struct in_device* in_dev = dev->ip_ptr;
+	struct in_ifaddr* ifa = in_dev->ifa_list;
 
 	netif_start_queue( dev );
 
@@ -67,9 +67,10 @@ static struct net_device_stats* network_get_stats( struct net_device *dev ) {		/
 }
 
 static netdev_tx_t network_start_xmit( struct sk_buff* skb, struct net_device* dev ){
-	++( netdev_priv( dev )->stats.tx_packets );
-	( netdev_priv( dev )->stats.tx_packets ) += skb->len;
-	skb->dev = ( netdev_priv( dev )->parent );
+	struct priv* priv = netdev_priv( dev );
+	priv->stats.tx_packets++;
+	priv->stats.tx_bytes += skb->len;
+	skb->dev = priv->parent;
 	skb->priority = 1;
 
 	dev_queue_xmit( skb );													/* send packet */
