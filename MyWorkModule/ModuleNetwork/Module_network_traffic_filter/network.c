@@ -1,9 +1,8 @@
-										/* 				Модуль ядра с фильтрацией трафика различных пакетов, 
-											Скелет, в котором можно делать абсолютно все что нужно с приходящими пакетами
-											Через хук-функцию удобнее, но когда нужен дополнительный сетевой интерфейс,
+			/* 		Модуль ядра с фильтрацией трафика различных пакетов, 
+				Скелет, в котором можно делать абсолютно все что нужно с приходящими пакетами
+				Через хук-функцию удобнее, но когда нужен дополнительный сетевой интерфейс,
 																	можно поступить и так
-										 */
-
+			 */
 #include <net/arp.h>
 #include <linux/ip.h>
 #include <linux/module.h>
@@ -14,28 +13,29 @@
 #include <linux/inetdevice.h>
 #include <linux/moduleparam.h>
 
+/* макросы для удобства */
 #define ERR(...) printk( KERN_ERR __VA_ARGS__ )
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
 #define DEBUG(...) if( debug > 0 ) printk( KERN_INFO "DBG MSG " __VA_ARGS__ )
 
-static char* link = "enps2n0";							/* имя родительского интерфейса */
+static char* link = "enps2n0";					/* имя родительского интерфейса */
 module_param( link, charp, 0 );
 
 static char* ifname = "interface_name_this";			/* имя виртуального интерфейса, создаваемого модулем */
 module_param( ifname, charp, 0 );
 
-static int debug = 0;									/* для отладки модулей */
+static int debug = 0;						/* для отладки модулей */
 module_param( debug, int, 0 );
 
 struct net_device* child = NULL;
 
-struct priv{											/* структура для различной информации нашего интерфеса, здесь можно размещать любую информацию, размещается в хвосте при создании виртуального интерфейса */
-	struct net_device* parent;							/* родительский интерфейс */
-	struct net_device_stats stats;						/* статистика виртуального интерфейса, можно занести кол-во отправленных пакетов, байт и т.д. */
-	char name_author[30];								/* для примера еще добавил имя автора */
+struct priv{							/* структура для различной информации нашего интерфеса, здесь можно размещать любую информацию, размещается в хвосте при создании виртуального интерфейса */
+	struct net_device* parent;				/* родительский интерфейс */
+	struct net_device_stats stats;				/* статистика виртуального интерфейса, можно занести кол-во отправленных пакетов, байт и т.д. */
+	char name_author[30];					/* для примера еще добавил имя автора */
 };
 
-static char* strIP( u32 addr ) {     					/* диагностика IP в точечной нотации */
+static char* strIP( u32 addr ) {     				/* диагностика IP в точечной нотации */
    static char saddr[ MAX_ADDR_LEN ];
    sprintf( saddr, "%d.%d.%d.%d",
             ( addr ) & 0xFF, ( addr >> 8 ) & 0xFF,
@@ -51,7 +51,7 @@ static int network_open( struct net_device* dev ){		/* Вызывается пр
 	struct in_device* in_dev = dev->ip_ptr;
 	struct in_ifaddr* ifa = in_dev->ifa_list;
 
-	netif_start_queue( dev );
+	netif_start_queue( dev );				/* Разрешаем обработку пакетов */
 
 	return 0;
 }
@@ -59,7 +59,7 @@ static int network_open( struct net_device* dev ){		/* Вызывается пр
 static int network_stop( struct net_device* dev ){		/* Вызывается при DOWN сетевого интерфейса */
 	LOG( "Virtual interface %s DOWN.\n", dev->name );
 
-	netif_stop_queue( dev );
+	netif_stop_queue( dev );				/* Запрещаем обработку пакетов */
 
 	return 0;
 }
@@ -92,7 +92,8 @@ static struct net_device_ops network_function = {
 int arp_rcv_pack( struct sk_buff* skb, struct net_device* dev,
 				  struct packet_type* pkt, struct net_device* odev ){		/* обработчик пакетов arp */
 
-	/* Здесь мы можем делать все что нам нужно с пакетами, подмену пакетов, блокирование и тд. 
+	/* 	
+		Здесь мы можем делать все что нам нужно с пакетами, подмену пакетов, блокирование и тд. 
 		Проще это все делать через хук-функцию( намного проще, но такой способ тоже иногда необходим :) ) 
 	 */
 
@@ -164,7 +165,7 @@ static int __init network_init( void ){
 		return -ENOMEM;
 	}
 
-	priv = netdev_priv( child );								/* возвращает указатель на структуру priv, где мы можем хранить свои любые произвольные данные */
+	priv = netdev_priv( child );						/* возвращает указатель на структуру priv, где мы можем хранить свои любые произвольные данные */
 	priv->parent = dev_get_by_name( &init_net, link );			/* определяем link родительским устройство( ф-ция ищет по имени девайс и возвращает указатель на него ) */
 	if( !priv->parent ) {
     	ERR( "%s: no such net: %s", THIS_MODULE->name, link );
@@ -182,7 +183,7 @@ static int __init network_init( void ){
 	memcpy( child->broadcast, priv->parent->broadcast, ETH_ALEN );
 
 	if( ( errno = dev_alloc_name( child, child->name ) ) ) {	 
-	/* dev_alloc_name присваивает устройству имя, 
+	/* 	dev_alloc_name присваивает устройству имя, 
 		просматривая свою таблицу и вставляя его в подходящее место.
 		Формат строки "string%d" - ф-ция сама назначит подходящий номер 
 	 */
@@ -191,7 +192,7 @@ static int __init network_init( void ){
 		goto err;
 	}
 	register_netdev( child );
-	arp_proto.dev = ip_v4_proto.dev = priv->parent; 				// <---. отслеживать будет трафик только с родительского интерфейса
+	arp_proto.dev = ip_v4_proto.dev = priv->parent; 			// <---. отслеживать будет трафик только с родительского интерфейса
 
 	/* добавляем наши обработчики фреймов */
 	dev_add_pack( &arp_proto );									
@@ -209,11 +210,11 @@ err:
 static void __exit network_exit( void ){
 	struct priv *priv= netdev_priv( child );
 
-	dev_remove_pack( &arp_proto );    							// удалить обработчик фреймов
-	dev_remove_pack( &ip_v4_proto );    							// удалить обработчик фреймов
+	dev_remove_pack( &arp_proto );    					// удалить обработчик фреймов
+	dev_remove_pack( &ip_v4_proto );    					// удалить обработчик фреймов
 
 	unregister_netdev( child );
-	dev_put( priv->parent );									/* удаляет созданную ссылку на устройство, чтобы оно было нормально освобождено " this_cpu_dec(*dev->pcpu_refcnt); "*/
+	dev_put( priv->parent );						/* удаляет созданную ссылку на устройство, чтобы оно было нормально освобождено " this_cpu_dec(*dev->pcpu_refcnt); "*/
 	free_netdev( child );
 
 	LOG( "===== MODULE NETWORK UNLOADED =====\n" );
