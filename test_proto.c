@@ -13,6 +13,8 @@
 #include <linux/inetdevice.h>
 #include <linux/moduleparam.h>
 
+
+
 /* макросы для удобства */
 #define ERR(...) printk( KERN_ERR __VA_ARGS__ )
 #define LOG(...) printk( KERN_INFO __VA_ARGS__ )
