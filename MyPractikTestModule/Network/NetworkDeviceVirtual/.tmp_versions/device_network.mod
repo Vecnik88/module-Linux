@@ -1,0 +1,2 @@
+/home/anton/ModuleLinuxC/MyPractikTestModule/Network/NetworkDeviceVirtual/device_network.ko
+/home/anton/ModuleLinuxC/MyPractikTestModule/Network/NetworkDeviceVirtual/device_network.o
