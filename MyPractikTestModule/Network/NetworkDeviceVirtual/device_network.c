@@ -14,8 +14,23 @@
 static char* virt_dev = "test%d";
 module_param( virt_dev, charp, 0 );
 
-struct net_device* child = NULL;
+struct net_device* netdev = NULL;
 
+int virt_rcv( struct sk_buff *skb, struct net_device *dev,
+                   struct packet_type *pt, struct net_device *odev ) {
+   LOG( "Size packet: %d\n", skb->len );
+   kfree_skb( skb );
+
+   return skb->len;
+};
+
+static struct packet_type virt_proto = {
+   __constant_htons( ETH_P_ALL ),
+   NULL,
+   virt_rcv,
+   ( void* )1,
+   NULL
+};
 static int virt_open( struct net_device* dev ) {
 	LOG( " ===== Device with module: %s up\n", THIS_MODULE->name );
 
@@ -30,9 +45,15 @@ static int virt_stop( struct net_device* dev ) {
 	return 0;
 }
 
+static int virt_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
+
+	return 0;
+}
+
 static struct net_device_ops virt_dev_ops = {
 	.ndo_open = virt_open,
 	.ndo_stop = virt_stop,
+	.ndo_start_xmit = virt_start_xmit,
 };
 
 void setup( struct net_device* dev ) {
@@ -47,33 +68,38 @@ void setup( struct net_device* dev ) {
 
 static int __init virt_init( void ) {
 	int error = 0;
-	child = alloc_netdev( 0, virt_dev, NET_NAME_UNKNOWN, setup );
+	netdev = alloc_netdev( 0, virt_dev, NET_NAME_UNKNOWN, setup );
 
-	if( child == NULL ) {
+	if( netdev == NULL ) {
 		ERR( "%s: error alloc_netdev\n", THIS_MODULE->name );
 		return -ENOMEM;
 	}
 
-	error = dev_alloc_name( child, child->name );
+	error = dev_alloc_name( netdev, netdev->name );
 	if( error != 0 ) {
 		ERR( "%s: error dev_alloc_name, error = %d\n", THIS_MODULE->name, error );
 		error = -EIO;
 		goto err;
 	}
-	register_netdev( child );
+	register_netdev( netdev );
+
+	virt_proto.dev = netdev;
+	dev_add_pack( &virt_proto );
 
 	LOG( "===== Module %s loaded =====\n", THIS_MODULE->name );
 
 	return 0;
 
 err:
-	free_netdev( child );
+	free_netdev( netdev );
 	return error;
 }
 
-void __exit virt_exit( void ) {
-	unregister_netdev( child );
-	free_netdev( child );
+static void __exit virt_exit( void ) {
+	dev_remove_pack( &virt_proto );
+	unregister_netdev( netdev );
+	free_netdev( netdev );
+
 	LOG( "===== Module %s unloaded =====\n", THIS_MODULE->name );
 }
 
