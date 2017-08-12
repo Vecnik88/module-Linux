@@ -17,6 +17,12 @@ module_param( virt_dev, charp, 0 );
 
 struct net_device* netdev = NULL;
 
+struct pcpu_dstats {				/* структура для отслеживания статистики */
+	u64			tx_packets;			/* будем отслеживать пакеты и байты */
+	u64			tx_bytes;
+	struct u64_stats_sync	syncp;
+};
+
 int virt_rcv( struct sk_buff *skb, struct net_device *dev,
                    struct packet_type *pt, struct net_device *odev ) {
    LOG( "Size packet: %d\n", skb->len );
@@ -32,6 +38,17 @@ static struct packet_type virt_proto = {
    ( void* )1,
    NULL
 };
+
+static int virt_dev_init( struct net_device* dev ) {
+	dev->lstats = netdev_alloc_pcpu_stats( struct pcpu_lstats );
+	
+	return dev->lstats == NULL ? -ENOMEM : 0;
+}
+
+static int virt_dev_uninit( struct net_device* dev ) {
+	free_percpu( dev->lstats );
+}
+
 static int virt_open( struct net_device* dev ) {
 	LOG( " ===== Device with module: %s up\n", THIS_MODULE->name );
 
@@ -51,10 +68,41 @@ static int virt_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
 	return 0;
 }
 
+static void virt_stats64( struct net_device* dev, struct rtnl_link_stats64* stats ) {
+	int i = 0;
+	u64 bytes = 0, packets = 0;
+
+	for_each_possible_cpu(i) {
+		const struct pcpu_lstats *nl_stats;
+		u64 tbytes, tpackets;
+		unsigned int start;
+
+		nl_stats = per_cpu_ptr(dev->lstats, i);
+
+		do {
+			start = u64_stats_fetch_begin_irq(&nl_stats->syncp);
+			tbytes = nl_stats->bytes;
+			tpackets = nl_stats->packets;
+		} while (u64_stats_fetch_retry_irq(&nl_stats->syncp, start));
+
+		packets += tpackets;
+		bytes += tbytes;
+	}
+
+	stats->rx_packets = packets;
+	stats->tx_packets = 0;
+
+	stats->rx_bytes = bytes;
+	stats->tx_bytes = 0;
+}
+
 static struct net_device_ops virt_dev_ops = {
+	.ndo_init = virt_dev_init,
+	.ndo_uninit = virt_dev_uninit,
 	.ndo_open = virt_open,
 	.ndo_stop = virt_stop,
 	.ndo_start_xmit = virt_start_xmit,
+	.ndo_get_stats64 = virt_stats64,
 };
 
 void setup( struct net_device* dev ) {
