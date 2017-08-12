@@ -4,7 +4,6 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
-//#include <linux/version.h>
 #include <linux/netdevice.h>
 #include <linux/moduleparam.h>
 
@@ -40,8 +39,10 @@ void setup( struct net_device* dev ) {
 	int i = 0;
 	ether_setup( dev );
 	dev->netdev_ops = &virt_dev_ops;
-	for( i = 0; i < ETH_ALEN; ++i )
-		dev->dev_addr[ i ] = i;
+	for( i = 0; i < ETH_ALEN; ++i ) {
+		dev->dev_addr[ i ] = ( char )i;
+		dev->broadcast[ i ] = ( char )i;
+	}
 }
 
 static int __init virt_init( void ) {
