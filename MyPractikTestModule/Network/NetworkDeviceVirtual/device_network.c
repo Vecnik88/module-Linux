@@ -1,7 +1,3 @@
-								/* 		
-									Создание виртуального девайса, который ничего не делает версия 4.4
-								 */
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/netdevice.h>
@@ -68,8 +64,11 @@ void setup( struct net_device* dev ) {
 
 static int __init virt_init( void ) {
 	int error = 0;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0))
+	netdev = alloc_netdev( 0, virt_dev, setup );
+#else
 	netdev = alloc_netdev( 0, virt_dev, NET_NAME_UNKNOWN, setup );
-
+#endif
 	if( netdev == NULL ) {
 		ERR( "%s: error alloc_netdev\n", THIS_MODULE->name );
 		return -ENOMEM;
