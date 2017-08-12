@@ -35,7 +35,7 @@ struct pcpu_lstats {
 	struct u64_stats_sync syncp;
 };
 
-static int test_open( struct net_device* dev ){
+static int test_open( struct net_device* dev ) {
 	LOG( "===== Virtual interface %s UP =====\n", dev->name );
 
 	struct in_device* in_dev = dev->ip_ptr;
@@ -46,7 +46,7 @@ static int test_open( struct net_device* dev ){
 	return 0;
 }
 
-static int test_stop( struct net_device* dev ){
+static int test_stop( struct net_device* dev ) {
 	LOG( "===== Virtual interface %s DOWN =====\n", dev->name );
 
 	netif_stop_queue( dev );
@@ -54,7 +54,7 @@ static int test_stop( struct net_device* dev ){
 	return 0;
 }
 
-static netdev_tx_t test_start_xmit( struct sk_buff* skb, struct net_device* dev ){
+static netdev_tx_t test_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
 
 	struct pcpu_lstats *lb_stats;
 	int len;
@@ -86,8 +86,7 @@ static netdev_tx_t test_start_xmit( struct sk_buff* skb, struct net_device* dev 
 }
 
 static struct rtnl_link_stats64* dummy_get_stats64(struct net_device *dev,
-						   struct rtnl_link_stats64 *stats)
-{
+						   struct rtnl_link_stats64 *stats) {
 	int i;
 
 	for_each_possible_cpu(i) {
@@ -116,7 +115,7 @@ static struct net_device_ops network_function = {
 };
 
 int all_packet( struct sk_buff* skb, struct net_device* dev,			/* обработчик всех пакетов */
-				struct packet_type* pkt, struct net_device* odev ){
+				struct packet_type* pkt, struct net_device* odev ) {
 
 	LOG( "Function all_packet recv_packet= %d\n", skb->len );
 
@@ -133,9 +132,22 @@ static struct packet_type ip_v4_proto = {
 	.af_packet_priv = NULL,
 };
 
+void setup( struct net_device* dev ) {
+	int i;
+	ether_setup( dev );
+	de->netdev_ops = &network_function;
+	for( i = 0; i < ETH_ALEN; ++i )
+		dev->dev_addr[ i ] = ( char ) i;
 
-static int __ init test_init( void ){
+}
 
+static int __ init test_init( void ) {
+	int error = 0;
+	child = alloc_netdev( 0, "test_module", NET_NAME_UNKNOWN, setup );
+	if( child == NULL ) {
+		ERR( "%s: allocate error", THIS_MODULE->name );
+		return -ENOMEM;
+	}
 
 
 	LOG( "===== MODULE TEST PROTO INIT =====\n" );
