@@ -38,16 +38,16 @@ struct pcpu_dstats {
 int virt_rcv( struct sk_buff *skb, struct net_device *dev,
                    struct packet_type *pt, struct net_device *odev ) {
 	int len = skb->len;
-	struct pcpu_dstats* d_stats;
+	struct pcpu_dstats* d_stats = NULL;
 
   	LOG( "Size packet: %d\n", len );
 
 	d_stats = this_cpu_ptr( dev->dstats );								/* получаем указатель на переменную cpu этого процессора */
 
-  	u64_stats_update_begin(&d_stats->syncp);							/* синхронизируем */
+  	u64_stats_update_begin( &d_stats->syncp );							/* синхронизируем */
 	d_stats->rx_bytes += len;
 	d_stats->rx_pkts++;
-	u64_stats_update_end(&d_stats->syncp);
+	u64_stats_update_end( &d_stats->syncp );
 
 	kfree_skb( skb );													/* уменьшает skb->user на -1 - это важно так как иначе пакет не удалится в конце */
 
@@ -87,25 +87,19 @@ static int virt_stop( struct net_device* dev ) {
 }
 
 static int virt_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
-	struct pcpu_dstats* d_stats;
-	int len;
-
-	skb_tx_timestamp(skb);
-	skb_orphan(skb);
-
-	skb_dst_force(skb);
-
-	skb->protocol = eth_type_trans(skb, dev);
+	struct pcpu_dstats* d_stats = NULL;
+	int len = skb->len;
 
 	d_stats = this_cpu_ptr(dev->dstats);
 
-	len = skb->len;
-	if (likely(netif_rx(skb) == NET_RX_SUCCESS)) {				/* netif_rx() - ставит пакет в очередь либо дропает его если перегрузка */
-		u64_stats_update_begin(&d_stats->syncp);
+	if ( likely( netif_rx( skb ) == NET_RX_SUCCESS ) ) {				/* netif_rx() - ставит пакет в очередь либо дропает его если перегрузка */
+		u64_stats_update_begin( &d_stats->syncp );
 		d_stats->tx_bytes += len;
 		d_stats->tx_pkts++;
-		u64_stats_update_end(&d_stats->syncp);
+		u64_stats_update_end( &d_stats->syncp );
 	}
+
+	LOG( "Type packet = %d\n", skb->protocol );
 
 	return NETDEV_TX_OK;
 }
@@ -113,7 +107,7 @@ static int virt_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
 static void virt_stats64( struct net_device* dev, struct rtnl_link_stats64* stats ) {
 	int i = 0;
 
-	for_each_possible_cpu(i) {
+	for_each_possible_cpu( i ) {
 		const struct pcpu_dstats* d_stats;
 		
 		u64 tpkts = 0;								/* отправленные пакеты */
@@ -125,17 +119,17 @@ static void virt_stats64( struct net_device* dev, struct rtnl_link_stats64* stat
 
 		unsigned int start = 0;
 
-		d_stats = per_cpu_ptr(dev->dstats, i);
+		d_stats = per_cpu_ptr( dev->dstats, i );
 
 		do {
-			start = u64_stats_fetch_begin_irq(&d_stats->syncp);
+			start = u64_stats_fetch_begin_irq( &d_stats->syncp );
 			tbytes = d_stats->tx_bytes;
 			tpkts = d_stats->tx_pkts;
 			tdrops = d_stats->tx_drps;
 			rbytes = d_stats->rx_bytes;
 			rpkts = d_stats->rx_pkts;
 			rdrops = d_stats->rx_drps;
-		} while (u64_stats_fetch_retry_irq(&d_stats->syncp, start));
+		} while ( u64_stats_fetch_retry_irq( &d_stats->syncp, start ) );
 
 		stats->tx_bytes += tbytes;
 		stats->tx_packets += tpkts;
