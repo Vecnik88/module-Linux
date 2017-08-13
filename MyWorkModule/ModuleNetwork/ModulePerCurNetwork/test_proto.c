@@ -138,7 +138,7 @@ static int __init virt_init( void ) {
 	virt_proto.dev = netdev;
 	dev_add_pack( &virt_proto );
 
-	LOG( "===== Module %s loaded =====\n", THIS_MODULE->name );
+	LOG( "===== Module <%s> loaded =====\n", THIS_MODULE->name );
 
 	return 0;
 
@@ -152,7 +152,7 @@ static void __exit virt_exit( void ) {
 	unregister_netdev( netdev );
 	free_netdev( netdev );
 
-	LOG( "===== Module %s unloaded =====\n", THIS_MODULE->name );
+	LOG( "===== Module <%s> unloaded =====\n", THIS_MODULE->name );
 }
 
 module_init( virt_init );
