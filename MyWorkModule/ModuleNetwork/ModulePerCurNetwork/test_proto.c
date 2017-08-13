@@ -1,12 +1,15 @@
 		/* 				
                                     Тестовый модуль для отслеживания
-			производительности ядра с доступом через счетчики per cpu и блокированием 
+					производительности ядра с доступом через счетчики per cpu
 		 */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <net/dst.h>
+#include <linux/version.h>
 #include <linux/netdevice.h>
 #include <linux/moduleparam.h>
+#include <linux/etherdevice.h>
 
 /* макросы для удобства */
 #define ERR(...) printk( KERN_ERR __VA_ARGS__ )
@@ -34,10 +37,21 @@ struct pcpu_dstats {
 
 int virt_rcv( struct sk_buff *skb, struct net_device *dev,
                    struct packet_type *pt, struct net_device *odev ) {
-   LOG( "Size packet: %d\n", skb->len );
-   kfree_skb( skb );
+	int len = skb->len;
+	struct pcpu_dstats* d_stats;
 
-   return skb->len;
+  	LOG( "Size packet: %d\n", len );
+
+	d_stats = this_cpu_ptr( dev->dstats );								/* получаем указатель на переменную cpu этого процессора */
+
+  	u64_stats_update_begin(&d_stats->syncp);							/* синхронизируем */
+	d_stats->rx_bytes += len;
+	d_stats->rx_pkts++;
+	u64_stats_update_end(&d_stats->syncp);
+
+	kfree_skb( skb );													/* уменьшает skb->user на -1 - это важно так как иначе пакет не удалится в конце */
+
+	return skb->len;
 };
 
 static struct packet_type virt_proto = {
@@ -73,12 +87,27 @@ static int virt_stop( struct net_device* dev ) {
 }
 
 static int virt_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
+	struct pcpu_dstats* d_stats;
+	int len;
 
+	skb_tx_timestamp(skb);
+	skb_orphan(skb);
 
+	skb_dst_force(skb);
 
-	dev_kfree_skb( skb );
+	skb->protocol = eth_type_trans(skb, dev);
 
-	return 0;
+	d_stats = this_cpu_ptr(dev->dstats);
+
+	len = skb->len;
+	if (likely(netif_rx(skb) == NET_RX_SUCCESS)) {				/* netif_rx() - ставит пакет в очередь либо дропает его если перегрузка */
+		u64_stats_update_begin(&d_stats->syncp);
+		d_stats->tx_bytes += len;
+		d_stats->tx_pkts++;
+		u64_stats_update_end(&d_stats->syncp);
+	}
+
+	return NETDEV_TX_OK;
 }
 
 static void virt_stats64( struct net_device* dev, struct rtnl_link_stats64* stats ) {
@@ -96,7 +125,7 @@ static void virt_stats64( struct net_device* dev, struct rtnl_link_stats64* stat
 
 		unsigned int start = 0;
 
-		nd_stats = per_cpu_ptr(dev->dstats, i);
+		d_stats = per_cpu_ptr(dev->dstats, i);
 
 		do {
 			start = u64_stats_fetch_begin_irq(&d_stats->syncp);
@@ -104,7 +133,7 @@ static void virt_stats64( struct net_device* dev, struct rtnl_link_stats64* stat
 			tpkts = d_stats->tx_pkts;
 			tdrops = d_stats->tx_drps;
 			rbytes = d_stats->rx_bytes;
-			rpkts = d_stats->rx_packets;
+			rpkts = d_stats->rx_pkts;
 			rdrops = d_stats->rx_drps;
 		} while (u64_stats_fetch_retry_irq(&d_stats->syncp, start));
 
@@ -122,8 +151,8 @@ static struct net_device_ops virt_dev_ops = {
 	.ndo_uninit = virt_dev_uninit,
 	.ndo_open = virt_open,
 	.ndo_stop = virt_stop,
+	.ndo_get_stats64 = ( void* ) virt_stats64,
 	.ndo_start_xmit = virt_start_xmit,
-	.ndo_get_stats64 = virt_stats64,
 };
 
 void setup( struct net_device* dev ) {
@@ -138,7 +167,7 @@ void setup( struct net_device* dev ) {
 
 static int __init virt_init( void ) {
 	int error = 0;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0))
+#if ( LINUX_VERSION_CODE < ( KERNEL_VERSION( 3, 17, 0 ) ) )
 	netdev = alloc_netdev( 0, virt_dev, setup );
 #else
 	netdev = alloc_netdev( 0, virt_dev, NET_NAME_UNKNOWN, setup );
@@ -179,5 +208,5 @@ static void __exit virt_exit( void ) {
 module_init( virt_init );
 module_exit( virt_exit );
 
-MODULE_LICENSE( "GPLv2" );
+MODULE_LICENSE( "GPL v2" );
 MODULE_AUTHOR( "Vecnik88 mail:Ve_cni_K@inbox.ru" );
