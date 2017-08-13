@@ -17,9 +17,18 @@ module_param( virt_dev, charp, 0 );
 
 struct net_device* netdev = NULL;
 
-struct pcpu_dstats {				/* структура для отслеживания статистики */
-	u64			tx_packets;			/* будем отслеживать пакеты и байты */
+/*
+		В struct net_device есть в конце объединение union в котором содержатся структуры pcpu_dstats, pcpu_lstats и другие, 
+	при написание сетевого интерфейса нужно заглянуть туда и выбрать подходящую структуру. 
+		Это объединение сделано специально для percpu и имеет пометку ввиде макроса __percpu 
+ */
+struct pcpu_dstats {
+	u64			tx_pkts;
 	u64			tx_bytes;
+	u64			tx_drps;
+	u64			rx_pkts;
+	u64			rx_bytes;
+	u64			rx_drps;
 	struct u64_stats_sync	syncp;
 };
 
@@ -40,60 +49,72 @@ static struct packet_type virt_proto = {
 };
 
 static int virt_dev_init( struct net_device* dev ) {
-	dev->lstats = netdev_alloc_pcpu_stats( struct pcpu_lstats );
+	dev->dstats = netdev_alloc_pcpu_stats( struct pcpu_dstats );
 	
-	return dev->lstats == NULL ? -ENOMEM : 0;
+	return dev->dstats == NULL ? -ENOMEM : 0;
 }
 
-static int virt_dev_uninit( struct net_device* dev ) {
-	free_percpu( dev->lstats );
+static void virt_dev_uninit( struct net_device* dev ) {
+	free_percpu( dev->dstats );
 }
 
 static int virt_open( struct net_device* dev ) {
 	LOG( " ===== Device with module: %s up\n", THIS_MODULE->name );
 
-	netif_start_queue( dev );
+	netif_start_queue( dev );									/* разрешаем прием пакетов */
 	return 0;
 }
 
 static int virt_stop( struct net_device* dev ) {
 	LOG( " ===== Device with module: %s down\n", THIS_MODULE->name );
 
-	netif_stop_queue( dev );
+	netif_stop_queue( dev );									/* запрещаем прием пакетов */
 	return 0;
 }
 
 static int virt_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
+
+
+
+	dev_kfree_skb( skb );
 
 	return 0;
 }
 
 static void virt_stats64( struct net_device* dev, struct rtnl_link_stats64* stats ) {
 	int i = 0;
-	u64 bytes = 0, packets = 0;
 
 	for_each_possible_cpu(i) {
-		const struct pcpu_lstats *nl_stats;
-		u64 tbytes, tpackets;
-		unsigned int start;
+		const struct pcpu_dstats* d_stats;
+		
+		u64 tpkts = 0;								/* отправленные пакеты */
+		u64 rpkts = 0;								/* полученные пакеты */
+		u64 tdrops = 0;								/* отброшенные пакеты на отправку */
+		u64 rbytes = 0;								/* отброшенные пакеты при получение( не валидные ) */
+		u64 tbytes = 0;								/* отправленное количество байт */
+		u64 rdrops = 0;								/* полученное количество байт */
 
-		nl_stats = per_cpu_ptr(dev->lstats, i);
+		unsigned int start = 0;
+
+		nd_stats = per_cpu_ptr(dev->dstats, i);
 
 		do {
-			start = u64_stats_fetch_begin_irq(&nl_stats->syncp);
-			tbytes = nl_stats->bytes;
-			tpackets = nl_stats->packets;
-		} while (u64_stats_fetch_retry_irq(&nl_stats->syncp, start));
+			start = u64_stats_fetch_begin_irq(&d_stats->syncp);
+			tbytes = d_stats->tx_bytes;
+			tpkts = d_stats->tx_pkts;
+			tdrops = d_stats->tx_drps;
+			rbytes = d_stats->rx_bytes;
+			rpkts = d_stats->rx_packets;
+			rdrops = d_stats->rx_drps;
+		} while (u64_stats_fetch_retry_irq(&d_stats->syncp, start));
 
-		packets += tpackets;
-		bytes += tbytes;
+		stats->tx_bytes += tbytes;
+		stats->tx_packets += tpkts;
+		stats->tx_dropped += tdrops;
+		stats->rx_bytes += rbytes;
+		stats->rx_packets += rpkts;
+		stats->rx_packets += rdrops;
 	}
-
-	stats->rx_packets = packets;
-	stats->tx_packets = 0;
-
-	stats->rx_bytes = bytes;
-	stats->tx_bytes = 0;
 }
 
 static struct net_device_ops virt_dev_ops = {
@@ -110,8 +131,8 @@ void setup( struct net_device* dev ) {
 	ether_setup( dev );
 	dev->netdev_ops = &virt_dev_ops;
 	for( i = 0; i < ETH_ALEN; ++i ) {
-		dev->dev_addr[ i ] = ( char )i;
-		dev->broadcast[ i ] = ( char )i;
+		dev->dev_addr[ i ] = ( char )i;									/* мак адрес */
+		dev->broadcast[ i ] = ( char )i;								/* широковещательный адрес */
 	}
 }
 
@@ -160,172 +181,3 @@ module_exit( virt_exit );
 
 MODULE_LICENSE( "GPLv2" );
 MODULE_AUTHOR( "Vecnik88 mail:Ve_cni_K@inbox.ru" );
-
-/*#include <net/arp.h>
-#include <linux/ip.h>
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/version.h>
-#include <linux/netdevice.h>
-#include <linux/etherdevice.h>
-#include <linux/inetdevice.h>
-#include <linux/moduleparam.h>
-
-
-#define ERR(...) printk( KERN_ERR __VA_ARGS__ )
-#define LOG(...) printk( KERN_INFO __VA_ARGS__ )
-#define DEBUG(...) if( debug > 0 ) printk( KERN_INFO "DBG MSG " __VA_ARGS__ )
-
-static char* link = "enps2n0";							8
-module_param( link, charp, 0 );
-
-static char* ifname = "interface_name_this";			8
-module_param( ifname, charp, 0 );
-
-static int debug = 0;									8
-module_param( debug, int, 0 );
-
-struct net_device* child = NULL;
-
-struct pcpu_lstats {
-	u64 packets;
-	u64 bytes;
-	struct u64_stats_sync syncp;
-};
-
-static int test_open( struct net_device* dev ) {
-	LOG( "===== Virtual interface %s UP =====\n", dev->name );
-
-	struct in_device* in_dev = dev->ip_ptr;
-	struct in_ifaddr* ifa = in_dev->ifa_list;
-
-	netif_start_queue( dev ); 							
-
-	return 0;
-}
-
-static int test_stop( struct net_device* dev ) {
-	LOG( "===== Virtual interface %s DOWN =====\n", dev->name );
-
-	netif_stop_queue( dev );
-
-	return 0;
-}
-
-static netdev_tx_t test_start_xmit( struct sk_buff* skb, struct net_device* dev ) {
-
-	struct pcpu_lstats *lb_stats;
-	int len;
-
-	skb_orphan(skb);
-
-	/* 
-		Перед очередью этого пакета в netif_rx (),
-			Убедитесь, что dst refcounted.
-	
-
-	skb_dst_force(skb);
-
-	skb->protocol = eth_type_trans(skb, dev);
-
-	/* нормально использовать per_cpu_ptr( ), потому что BHs отключены 
-
-	lb_stats = this_cpu_ptr(dev->lstats);
-
-	len = skb->len;
-	if (likely(netif_rx(skb) == NET_RX_SUCCESS)) {
-		u64_stats_update_begin(&lb_stats->syncp);
-		lb_stats->bytes += len;
-		lb_stats->packets++;
-		u64_stats_update_end(&lb_stats->syncp);
-	}
-
-	return NETDEV_TX_OK;
-}
-
-static struct rtnl_link_stats64* dummy_get_stats64(struct net_device *dev,
-						   struct rtnl_link_stats64 *stats) {
-	int i;
-
-	for_each_possible_cpu(i) {
-		const struct pcpu_dstats *dstats;
-		u64 tbytes, tpackets;
-		unsigned int start;
-
-		dstats = per_cpu_ptr(dev->dstats, i);
-		do {
-			start = u64_stats_fetch_begin_bh(&dstats->syncp);
-			tbytes = dstats->tx_bytes;
-			tpackets = dstats->tx_packets;
-		} while (u64_stats_fetch_retry_bh(&dstats->syncp, start));
-		stats->tx_bytes += tbytes;
-		stats->tx_packets += tpackets;
-	}
-
-	return stats;
-}
-
-static struct net_device_ops network_function = {
-	.ndo_open = test_open,
-	.ndo_stop = test_stop,
-	.ndo_get_stats64 = loopback_get_stats64,
-	.ndo_start_xmit = test_start_xmit
-};
-
-int all_packet( struct sk_buff* skb, struct net_device* dev,			/* обработчик всех пакетов 
-				struct packet_type* pkt, struct net_device* odev ) {
-
-	LOG( "Function all_packet recv_packet= %d\n", skb->len );
-
-	kfree_skb( skb );
-	
-	return skb->len;
-}
-
-static struct packet_type ip_v4_proto = {
-	.type = __constant_htons( ETH_P_ALL ),
-	.dev = NULL,
-	.func = ip_v4_rcv_pack,
-	.id_match = ( void* ) 1,
-	.af_packet_priv = NULL,
-};
-
-void setup( struct net_device* dev ) {
-	int i;
-	ether_setup( dev );
-	de->netdev_ops = &network_function;
-	for( i = 0; i < ETH_ALEN; ++i )
-		dev->dev_addr[ i ] = ( char ) i;
-
-}
-
-static int __ init test_init( void ) {
-	int error = 0;
-	child = alloc_netdev( 0, "test_module", NET_NAME_UNKNOWN, setup );
-	if( child == NULL ) {
-		ERR( "%s: allocate error", THIS_MODULE->name );
-		return -ENOMEM;
-	}
-
-
-	LOG( "===== MODULE TEST PROTO INIT =====\n" );
-
-	return 0;
-}
-
-static void __exit test_exit( void ){
-
-
-
-	LOG( "===== MODULE TEST PROTO REMOVED =====\n" );
-}
-
-module_init( test_init );
-module_exit( test_exit );
-
-MODULE_VERSION( "1.1" );
-MODULE_LICENSE( "GPL" );
-MODULE_AUTHOR( "Vecnik88" );
-MODULE_DESCRIPTION( " Тестовый модуль для изучения переменных процессора (per cpu),"
-					" чтобы в дальнейшем их модифицировать для улучшения производительности процессора" );
-*/
