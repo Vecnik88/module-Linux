@@ -1,3 +1,8 @@
+/* 
+ * 	Оптимизация модуля сетевых интерфейсов за счет удаления атомарных операций 
+ * 	и использование per cpu счетчиков 
+ */
+ 
 /*
  * L2TPv3 ethernet pseudowire driver
  *
@@ -9,11 +14,6 @@
  *	2 of the License, or (at your option) any later version.
  */
 
-/* 
- * Оптимизация модуля сетевых интерфейсов за счет удаления атомарных операций 
- * и использование per cpu счетчиков 
- */
- 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/module.h>
@@ -81,6 +81,7 @@ static inline struct l2tp_eth_net *l2tp_eth_pernet(struct net *net)
 static struct lock_class_key l2tp_eth_tx_busylock;
 static int l2tp_eth_dev_init(struct net_device *dev)
 {
+	int i = 0;
 	struct l2tp_eth *priv = netdev_priv(dev);
 
 	priv->dev = dev;
@@ -89,9 +90,17 @@ static int l2tp_eth_dev_init(struct net_device *dev)
 	dev->qdisc_tx_busylock = &l2tp_eth_tx_busylock;
 	priv->dstats = alloc_percpu( struct pcpu_dstats );
 
-	return priv->dstats == NULL ? -ENOMEM : 0;
-}
+	if ( priv->dstats == NULL )
+		return -ENOMEM;
 
+	for_each_possible_cpu(i) {
+		struct pcpu_dstats *d_stats;
+		d_stats = per_cpu_ptr(priv->dstats, i);
+		u64_stats_init(&d_stats->syncp);
+	}
+
+	return 0;
+}
 
 static void l2tp_eth_dev_uninit(struct net_device *dev)
 {
@@ -117,6 +126,11 @@ static int l2tp_eth_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 		u64_stats_update_begin( &d_stats->syncp );
 		d_stats->tx_bytes += len;
 		d_stats->tx_packets++;
+
+		printk( KERN_INFO "send bytes  = %lu, send packets = %lu\n", 
+			( unsigned long ) d_stats->tx_bytes, 
+			( unsigned long ) d_stats->tx_packets );
+		
 		u64_stats_update_end( &d_stats->syncp );
 	} else {
 		u64_stats_update_begin( &d_stats->syncp );
@@ -156,6 +170,11 @@ static struct rtnl_link_stats64 *l2tp_eth_get_stats64(struct net_device *dev,
 			rbytes = d_stats->rx_bytes;
 			rpkts = d_stats->rx_packets;
 			rdrops = d_stats->rx_errors;
+
+			printk( KERN_INFO "id CPU = %d, tbytes = %lu, rbytes = %lu\n",
+					i, 
+					( unsigned long ) tbytes,
+					( unsigned long ) rbytes);
 		} while ( u64_stats_fetch_retry_bh( &d_stats->syncp, start ) );
 
 		stats->tx_bytes += tbytes;
@@ -202,7 +221,6 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 		print_hex_dump_bytes("", DUMP_PREFIX_OFFSET, skb->data, length);
 	}
 
-	unsigned int len = skb->len;
 	struct pcpu_dstats* d_stats = this_cpu_ptr( priv->dstats );
 
 	if (!pskb_may_pull(skb, ETH_HLEN))
@@ -218,8 +236,13 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 
 	if (dev_forward_skb( dev, skb ) == NET_RX_SUCCESS) {
 		u64_stats_update_begin( &d_stats->syncp );
-		d_stats->rx_bytes += len;
+		d_stats->rx_bytes += skb->len;
 		d_stats->rx_packets++;
+
+		printk( KERN_INFO "recv bytes  = %lu, recv packets = %lu\n", 
+			( unsigned long ) d_stats->rx_bytes, 
+			( unsigned long ) d_stats->rx_packets );
+
 		u64_stats_update_end( &d_stats->syncp );
 	} else {
 		u64_stats_update_begin( &d_stats->syncp );
@@ -269,7 +292,7 @@ static int l2tp_eth_create(struct net *net, u32 tunnel_id, u32 session_id, u32 p
 	struct l2tp_session *session;
 	struct l2tp_eth *priv;
 	struct l2tp_eth_sess *spriv;
-	int rc, i;
+	int rc;
 	struct l2tp_eth_net *pn;
 
 	tunnel = l2tp_tunnel_find(net, tunnel_id);
@@ -317,12 +340,6 @@ static int l2tp_eth_create(struct net *net, u32 tunnel_id, u32 session_id, u32 p
 	priv = netdev_priv(dev);
 	priv->dev = dev;
 	priv->session = session;
-
-	for_each_possible_cpu(i) {
-		struct pcpu_dstats *d_stats;
-		d_stats = per_cpu_ptr(priv->dstats, i);
-		u64_stats_init(&d_stats->syncp);
-	}
 	INIT_LIST_HEAD(&priv->list);
 
 	priv->tunnel_sock = tunnel->sock;
@@ -334,7 +351,6 @@ static int l2tp_eth_create(struct net *net, u32 tunnel_id, u32 session_id, u32 p
 
 	spriv = l2tp_session_priv(session);
 	spriv->dev = dev;
-
 	rc = register_netdev(dev);
 	if (rc < 0)
 		goto out_del_dev;
@@ -386,7 +402,6 @@ static const struct l2tp_nl_cmd_ops l2tp_eth_nl_cmd_ops = {
 static int __init l2tp_eth_init(void)
 {
 	int err = 0;
-
 	err = l2tp_nl_register_ops(L2TP_PWTYPE_ETH, &l2tp_eth_nl_cmd_ops);
 	if (err)
 		goto out;
