@@ -14,7 +14,6 @@
  * 	и использование per cpu счетчиков 
  */
 
-
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/module.h>
@@ -121,7 +120,7 @@ static int l2tp_eth_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct l2tp_session *session = priv->session;
 	unsigned int len = skb->len;
 
-	struct pcpu_dstats* d_stats = NULL;
+	struct pcpu_dstats *d_stats = NULL;
 	d_stats = this_cpu_ptr( priv->dstats );
 	if( likely( ( l2tp_xmit_skb( session, skb, session->hdr_len ) ) == NET_XMIT_SUCCESS ) ) {
 		u64_stats_update_begin( &d_stats->syncp );
