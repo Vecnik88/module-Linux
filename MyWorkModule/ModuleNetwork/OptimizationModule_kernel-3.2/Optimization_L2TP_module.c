@@ -1,11 +1,3 @@
-/* 
- * 	Оптимизация модуля сетевых интерфейсов за счет удаления атомарных операций 
- * 	и использование per cpu счетчиков 
- */
- 
-
-
-
 /*
  * L2TPv3 ethernet pseudowire driver
  *
@@ -16,6 +8,12 @@
  *	as published by the Free Software Foundation; either version
  *	2 of the License, or (at your option) any later version.
  */
+
+/* 
+ * 	Оптимизация модуля сетевых интерфейсов за счет удаления атомарных операций 
+ * 	и использование per cpu счетчиков 
+ */
+
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
