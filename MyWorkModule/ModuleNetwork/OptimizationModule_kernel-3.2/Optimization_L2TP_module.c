@@ -58,7 +58,7 @@ struct l2tp_eth {
 	struct sock		*tunnel_sock;
 	struct l2tp_session	*session;
 	struct list_head	list;
-	struct pcpu_dstats *dstats;
+	struct pcpu_dstats 	*dstats;
 };
 
 /* via l2tp_session_priv() */
