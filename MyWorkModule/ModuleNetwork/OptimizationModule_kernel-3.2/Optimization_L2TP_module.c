@@ -49,7 +49,8 @@ struct pcpu_dstats {
 	u64			rx_packets;
 	u64			rx_bytes;
 	u64			rx_errors;
-	struct u64_stats_sync	syncp;
+	struct u64_stats_sync	tx_syncp;
+	struct u64_stats_sync	rx_syncp;
 };
 
 /* via netdev_priv() */
@@ -58,7 +59,7 @@ struct l2tp_eth {
 	struct sock		*tunnel_sock;
 	struct l2tp_session	*session;
 	struct list_head	list;
-	struct pcpu_dstats 	*dstats;
+	struct pcpu_dstats	*dstats;
 };
 
 /* via l2tp_session_priv() */
@@ -88,15 +89,16 @@ static int l2tp_eth_dev_init(struct net_device *dev)
 	eth_hw_addr_random(dev);
 	memset(&dev->broadcast[0], 0xff, 6);
 	dev->qdisc_tx_busylock = &l2tp_eth_tx_busylock;
-	priv->dstats = alloc_percpu( struct pcpu_dstats );
+	priv->dstats = alloc_percpu(struct pcpu_dstats);
 
-	if ( priv->dstats == NULL )
+	if (priv->dstats == NULL)
 		return -ENOMEM;
 
 	for_each_possible_cpu(i) {
 		struct pcpu_dstats *d_stats;
 		d_stats = per_cpu_ptr(priv->dstats, i);
-		u64_stats_init(&d_stats->syncp);
+		u64_stats_init(&d_stats->tx_syncp);
+		u64_stats_init(&d_stats->rx_syncp);
 	}
 
 	return 0;
@@ -121,21 +123,16 @@ static int l2tp_eth_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 	unsigned int len = skb->len;
 
 	struct pcpu_dstats *d_stats = NULL;
-	d_stats = this_cpu_ptr( priv->dstats );
-	if( likely( ( l2tp_xmit_skb( session, skb, session->hdr_len ) ) == NET_XMIT_SUCCESS ) ) {
-		u64_stats_update_begin( &d_stats->syncp );
+	d_stats = this_cpu_ptr(priv->dstats);
+	if (likely((l2tp_xmit_skb(session, skb, session->hdr_len)) == NET_XMIT_SUCCESS)) {
+		u64_stats_update_begin(&d_stats->tx_syncp);
 		d_stats->tx_bytes += len;
 		d_stats->tx_packets++;
-
-		printk( KERN_INFO "send bytes  = %lu, send packets = %lu\n", 
-			( unsigned long ) d_stats->tx_bytes, 
-			( unsigned long ) d_stats->tx_packets );
-		
-		u64_stats_update_end( &d_stats->syncp );
+		u64_stats_update_end(&d_stats->tx_syncp);
 	} else {
-		u64_stats_update_begin( &d_stats->syncp );
+		u64_stats_update_begin(&d_stats->tx_syncp);
 		d_stats->tx_dropped++;
-		u64_stats_update_end( &d_stats->syncp );
+		u64_stats_update_end(&d_stats->tx_syncp);
 	}
 
 	return NETDEV_TX_OK;
@@ -144,38 +141,34 @@ static int l2tp_eth_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 static struct rtnl_link_stats64 *l2tp_eth_get_stats64(struct net_device *dev,
 						      struct rtnl_link_stats64 *stats)
 {
+	int i = 0;
 	struct l2tp_eth *priv = netdev_priv(dev);
 
-	int i = 0;
-
-	for_each_possible_cpu( i ) {
-		const struct pcpu_dstats* d_stats;
-		
+	for_each_possible_cpu(i) {
 		u64 tpkts = 0;
 		u64 rpkts = 0;
 		u64 tdrops = 0;
 		u64 rbytes = 0;
 		u64 tbytes = 0;
 		u64 rdrops = 0;
-
 		unsigned int start = 0;
+		const struct pcpu_dstats *d_stats;
 
-		d_stats = per_cpu_ptr( priv->dstats, i );
+		d_stats = per_cpu_ptr(priv->dstats, i);
 
 		do {
-			start = u64_stats_fetch_begin_bh( &d_stats->syncp );
+			start = u64_stats_fetch_begin_bh(&d_stats->tx_syncp);
 			tbytes = d_stats->tx_bytes;
 			tpkts = d_stats->tx_packets;
 			tdrops = d_stats->tx_dropped;
+		} while (u64_stats_fetch_retry_bh(&d_stats->tx_syncp, start));
+
+		do {
+			start = u64_stats_fetch_begin_bh(&d_stats->rx_syncp);
 			rbytes = d_stats->rx_bytes;
 			rpkts = d_stats->rx_packets;
 			rdrops = d_stats->rx_errors;
-
-			printk( KERN_INFO "id CPU = %d, tbytes = %lu, rbytes = %lu\n",
-					i, 
-					( unsigned long ) tbytes,
-					( unsigned long ) rbytes);
-		} while ( u64_stats_fetch_retry_bh( &d_stats->syncp, start ) );
+		} while (u64_stats_fetch_retry_bh(&d_stats->rx_syncp, start));
 
 		stats->tx_bytes += tbytes;
 		stats->tx_packets += tpkts;
@@ -221,7 +214,7 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 		print_hex_dump_bytes("", DUMP_PREFIX_OFFSET, skb->data, length);
 	}
 
-	struct pcpu_dstats* d_stats = this_cpu_ptr( priv->dstats );
+	struct pcpu_dstats *d_stats = this_cpu_ptr(priv->dstats);
 
 	if (!pskb_may_pull(skb, ETH_HLEN))
 		goto error;
@@ -234,26 +227,21 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 	skb_dst_drop(skb);
 	nf_reset(skb);
 
-	if (dev_forward_skb( dev, skb ) == NET_RX_SUCCESS) {
-		u64_stats_update_begin( &d_stats->syncp );
+	if (dev_forward_skb(dev, skb) == NET_RX_SUCCESS) {
+		u64_stats_update_begin(&d_stats->rx_syncp);
 		d_stats->rx_bytes += skb->len;
 		d_stats->rx_packets++;
-
-		printk( KERN_INFO "recv bytes  = %lu, recv packets = %lu\n", 
-			( unsigned long ) d_stats->rx_bytes, 
-			( unsigned long ) d_stats->rx_packets );
-
-		u64_stats_update_end( &d_stats->syncp );
+		u64_stats_update_end(&d_stats->rx_syncp);
 	} else {
-		u64_stats_update_begin( &d_stats->syncp );
+		u64_stats_update_begin(&d_stats->rx_syncp);
 		d_stats->rx_errors++;
-		u64_stats_update_end( &d_stats->syncp );
+		u64_stats_update_end(&d_stats->rx_syncp);
 	}
 
 error:
-	u64_stats_update_begin( &d_stats->syncp );
+	u64_stats_update_begin(&d_stats->rx_syncp);
 	d_stats->rx_errors++;
-	u64_stats_update_end( &d_stats->syncp );
+	u64_stats_update_end(&d_stats->rx_syncp);
 	kfree_skb(skb);
 }
 
