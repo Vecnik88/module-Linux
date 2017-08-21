@@ -214,7 +214,7 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 		print_hex_dump_bytes("", DUMP_PREFIX_OFFSET, skb->data, length);
 	}
 
-	struct pcpu_dstats *d_stats = this_cpu_ptr(priv->dstats);
+	struct pcpu_dstats *d_stats = this_cpu_ptr( priv->dstats );
 
 	if (!pskb_may_pull(skb, ETH_HLEN))
 		goto error;
@@ -237,6 +237,8 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 		d_stats->rx_errors++;
 		u64_stats_update_end(&d_stats->rx_syncp);
 	}
+
+	return;
 
 error:
 	u64_stats_update_begin(&d_stats->rx_syncp);
