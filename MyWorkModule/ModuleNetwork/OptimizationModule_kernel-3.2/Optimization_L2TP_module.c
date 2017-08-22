@@ -42,7 +42,7 @@
 #define L2TP_ETH_DEV_NAME	"l2tpeth%d"
 
 /* stat our virtual device */
-struct pcpu_dstats {
+struct l2tp_pcpu_stats {
 	u64			tx_packets;
 	u64			tx_bytes;
 	u64			tx_dropped;
@@ -59,7 +59,7 @@ struct l2tp_eth {
 	struct sock		*tunnel_sock;
 	struct l2tp_session	*session;
 	struct list_head	list;
-	struct pcpu_dstats	*dstats;
+	struct l2tp_pcpu_stats	__percpu	*dstats;
 };
 
 /* via l2tp_session_priv() */
@@ -89,13 +89,13 @@ static int l2tp_eth_dev_init(struct net_device *dev)
 	eth_hw_addr_random(dev);
 	memset(&dev->broadcast[0], 0xff, 6);
 	dev->qdisc_tx_busylock = &l2tp_eth_tx_busylock;
-	priv->dstats = alloc_percpu(struct pcpu_dstats);
+	priv->dstats = alloc_percpu(struct l2tp_pcpu_stats);
 
 	if (priv->dstats == NULL)
 		return -ENOMEM;
 
 	for_each_possible_cpu(i) {
-		struct pcpu_dstats *d_stats;
+		struct l2tp_pcpu_stats *d_stats;
 		d_stats = per_cpu_ptr(priv->dstats, i);
 		u64_stats_init(&d_stats->tx_syncp);
 		u64_stats_init(&d_stats->rx_syncp);
@@ -112,7 +112,7 @@ static void l2tp_eth_dev_uninit(struct net_device *dev)
 	spin_lock(&pn->l2tp_eth_lock);
 	list_del_init(&priv->list);
 	spin_unlock(&pn->l2tp_eth_lock);
-	free_percpu( priv->dstats );
+	free_percpu(priv->dstats);
 	dev_put(dev);
 }
 
@@ -122,7 +122,7 @@ static int l2tp_eth_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct l2tp_session *session = priv->session;
 	unsigned int len = skb->len;
 
-	struct pcpu_dstats *d_stats = NULL;
+	struct l2tp_pcpu_stats *d_stats = NULL;
 	d_stats = this_cpu_ptr(priv->dstats);
 	if (likely((l2tp_xmit_skb(session, skb, session->hdr_len)) == NET_XMIT_SUCCESS)) {
 		u64_stats_update_begin(&d_stats->tx_syncp);
@@ -145,37 +145,37 @@ static struct rtnl_link_stats64 *l2tp_eth_get_stats64(struct net_device *dev,
 	struct l2tp_eth *priv = netdev_priv(dev);
 
 	for_each_possible_cpu(i) {
-		u64 tpkts = 0;
-		u64 rpkts = 0;
-		u64 tdrops = 0;
-		u64 rbytes = 0;
-		u64 tbytes = 0;
-		u64 rdrops = 0;
+		u64 rx_bytes = 0;
+		u64 tx_bytes = 0;
+		u64 rx_errors = 0;
+		u64 tx_dropped = 0;
+		u64 rx_packets = 0;
+		u64 tx_packets = 0;
 		unsigned int start = 0;
-		const struct pcpu_dstats *d_stats;
+		const struct l2tp_pcpu_stats *d_stats;
 
 		d_stats = per_cpu_ptr(priv->dstats, i);
 
 		do {
 			start = u64_stats_fetch_begin_bh(&d_stats->tx_syncp);
-			tbytes = d_stats->tx_bytes;
-			tpkts = d_stats->tx_packets;
-			tdrops = d_stats->tx_dropped;
+			tx_bytes = d_stats->tx_bytes;
+			tx_packets = d_stats->tx_packets;
+			tx_dropped = d_stats->tx_dropped;
 		} while (u64_stats_fetch_retry_bh(&d_stats->tx_syncp, start));
 
 		do {
 			start = u64_stats_fetch_begin_bh(&d_stats->rx_syncp);
-			rbytes = d_stats->rx_bytes;
-			rpkts = d_stats->rx_packets;
-			rdrops = d_stats->rx_errors;
+			rx_bytes = d_stats->rx_bytes;
+			rx_packets = d_stats->rx_packets;
+			rx_errors = d_stats->rx_errors;
 		} while (u64_stats_fetch_retry_bh(&d_stats->rx_syncp, start));
 
-		stats->tx_bytes += tbytes;
-		stats->tx_packets += tpkts;
-		stats->tx_dropped += tdrops;
-		stats->rx_bytes += rbytes;
-		stats->rx_packets += rpkts;
-		stats->rx_errors += rdrops;
+		stats->tx_bytes += tx_bytes;
+		stats->tx_packets += tx_packets;
+		stats->tx_dropped += tx_dropped;
+		stats->rx_bytes += rx_bytes;
+		stats->rx_packets += rx_packets;
+		stats->rx_errors += rx_errors;
 	}
 
 	return stats;
@@ -202,6 +202,9 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 	struct l2tp_eth_sess *spriv = l2tp_session_priv(session);
 	struct net_device *dev = spriv->dev;
 	struct l2tp_eth *priv = netdev_priv(dev);
+	struct l2tp_pcpu_stats *d_stats = NULL;
+
+	d_stats = this_cpu_ptr(priv->dstats);
 
 	if (session->debug & L2TP_MSG_DATA) {
 		unsigned int length;
@@ -213,8 +216,6 @@ static void l2tp_eth_dev_recv(struct l2tp_session *session, struct sk_buff *skb,
 		pr_debug("%s: eth recv\n", session->name);
 		print_hex_dump_bytes("", DUMP_PREFIX_OFFSET, skb->data, length);
 	}
-
-	struct pcpu_dstats *d_stats = this_cpu_ptr( priv->dstats );
 
 	if (!pskb_may_pull(skb, ETH_HLEN))
 		goto error;
