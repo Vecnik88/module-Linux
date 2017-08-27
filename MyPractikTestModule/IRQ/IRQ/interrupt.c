@@ -37,6 +37,3 @@ module_exit( my_exit );
 MODULE_LICENSE( "GPL" );
 MODULE_AUTHOR( "Vecnik88" );
 MODULE_DESCRIPTION( "HO HO HO Test module practik" );
-
-
-
