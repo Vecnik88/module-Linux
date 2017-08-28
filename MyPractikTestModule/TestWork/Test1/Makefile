@@ -4,6 +4,7 @@ PWD = $(shell pwd)
 DEST = /lib/modules/$(CURRENT)/misc
 TARGET = module
 obj-m := $(TARGET).o
+
 default:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
 clean:
