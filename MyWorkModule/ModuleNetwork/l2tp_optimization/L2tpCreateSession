@@ -77,7 +77,7 @@ ip route 0.0.0.0/0 10.0.1.1
 do comm
 do conf
 
-#################### TEST build_per_cpu ####################
+#################### TEST build_no_per_cpu ####################
 
        ########## FIRST TEST 30 sec ##########
 
