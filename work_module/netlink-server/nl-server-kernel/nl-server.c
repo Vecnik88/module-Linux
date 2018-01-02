@@ -34,21 +34,16 @@ static int set_carrier_vlan(struct nlmsghdr *nl_hdr)
 	for_each_net(net) {
 		vlan_dev = __dev_get_by_name(net, vlan_name);
 		if (vlan_dev != NULL) {
-			if (vlan_opt->is_up) {
-				printk(KERN_ALERT "true is-up=%d\n", vlan_opt->is_up);
+			if (vlan_opt->is_up)
 				netif_carrier_on(vlan_dev);
-			}
-			else {
-				printk(KERN_ALERT "false is-up=%d\n", vlan_opt->is_up);
+			else
 				netif_carrier_off(vlan_dev);
-			}
 
 			return 0;
 		}
 	}
 
 err:
-	printk(KERN_ALERT "vlan_name ERROR\n", vlan_name);
 	return NETLINK_SERV_ERR;
 }
 
