@@ -14,7 +14,7 @@ static struct sock* nl_socket = NULL;
 static int set_carrier_vlan(struct nlmsghdr *nl_hdr)
 {
 	struct net *net = NULL;
-	char vlan_name[15] = {0};
+	char vlan_name[IFNAMSIZ] = {0};
 	struct net_device *vlan_dev = NULL;
 	struct vlan_carrier *vlan_opt = NULL;
 
@@ -29,11 +29,11 @@ static int set_carrier_vlan(struct nlmsghdr *nl_hdr)
 		goto err;
 	}
 
-	snprintf(vlan_name, sizeof(vlan_name), "%s%d", "vlan.", vlan_opt->vid);
+	snprintf(vlan_name, IFNAMSIZ, "%s%d", "vlan.", vlan_opt->vid);
 
 	for_each_net(net) {
 		vlan_dev = __dev_get_by_name(net, vlan_name);
-		if (vlan_dev) {
+		if (vlan_dev != NULL) {
 			if (vlan_opt->is_up)
 				netif_carrier_on(vlan_dev);
 			else
@@ -82,7 +82,7 @@ static void nl_recv(struct sk_buff* skb)
 
 out:
 	skb_to_user = nlmsg_new(MAX_PAYLOAD, GFP_KERNEL);
-	if(skb_to_user == NULL) {
+	if (skb_to_user == NULL) {
 		printk(KERN_ERR "Failed to allocate memory\n");
 		return;
 	}
@@ -101,8 +101,7 @@ struct netlink_kernel_cfg cfg = {
 static int __init nl_kserver_init(void)
 {
 	nl_socket = netlink_kernel_create(&init_net, NETLINK_SERV_PROT, &cfg);
-	if(nl_socket == NULL)
-	{
+	if (nl_socket == NULL) {
 		printk(KERN_ERR "Can't create netlink socket\n");
 		return -ENOMEM;
 	}

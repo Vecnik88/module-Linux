@@ -5,7 +5,7 @@
 
 #include "if-mgr.h"
 
-int if_mgr_create_connect_to_kernel_space();
+int if_mgr_create_connect_to_kernel_space(ifmgr_t * ifmgr);
 int if_mgr_vlan_carrier_change(ifmgr_t * ifmgr, struct vlan_carrier vlan_opt);
 
 #endif	/* IF_MNG_CONTROL_VLAN_H */
