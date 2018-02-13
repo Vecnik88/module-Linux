@@ -15,18 +15,18 @@
 
 #include "nl-server.h"
 
-#define NL_KSERV_LOG(fmt, ...)         \
+#define NL_KSERV_LOG(fmt, ...)             \
 	printk(KERN_INFO MODULE_NAME ": "  \
-		   "[%s] " fmt,                \
+		   "[%s] " fmt,            \
 		   __func__, ##__VA_ARGS__)
 
-#define NL_KSERV_ERR(fmt, ...)        \
-	printk(KERN_ERR MODULE_NAME ": "  \
-		   "[%s] " fmt,               \
+#define NL_KSERV_ERR(fmt, ...)             \
+	printk(KERN_ERR MODULE_NAME ": "   \
+		   "[%s] " fmt,            \
 		   __func__, ##__VA_ARGS__)
 
-#define NL_KSERV_DBG(fmt, ...)             \
-	if (unlikely(nl_kserver_debug))        \
+#define NL_KSERV_DBG(fmt, ...)                     \
+	if (unlikely(nl_kserver_debug))            \
 		printk(KERN_ALERT MODULE_NAME ": " \
 		       "[%s] " fmt,                \
 		       __func__, ##__VA_ARGS__)
