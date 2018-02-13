@@ -192,13 +192,13 @@ struct netlink_kernel_cfg cfg = {
 };
 
 static ssize_t nl_kserver_read_info(struct file *file, char *buf,
-									size_t count, loff_t *ppos)
+				    size_t count, loff_t *ppos)
 {
 	static char buf_msg[LEN_MSG];
 	memset(buf_msg, 0, LEN_MSG);
 
 	snprintf(buf_msg, LEN_MSG, "%s%lu\n%s%lu\n", "Normal message: ", nl_kserver_norm_msg,
-												 "Errors: ", nl_kserver_error);
+						     "Errors: ", nl_kserver_error);
 
 	if (*ppos >= strlen(buf_msg)) {
 		*ppos = 0;
