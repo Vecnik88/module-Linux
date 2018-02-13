@@ -5,10 +5,14 @@
 #include <stdint.h>
 #endif
 
-#define MODULE_NAME		"Netlink server"
+#define MODULE_NAME         "netlink-server"
+#define NETNS_RUN_DIR       "/var/run/netns"
 
-#define NETLINK_SERV_PROT	17
-#define MAX_PAYLOAD		8192
+#define NETLINK_SERV_PROT   17
+#define VRF_NAME_LEN        32
+#define NET_PATH            512
+#define LEN_MSG             1024
+#define MAX_PAYLOAD         8192
 
 #define NETLINK_SERV_ERR	100
 
@@ -19,6 +23,7 @@
 struct vlan_carrier {
 	uint16_t	vid;
 	uint8_t		is_up;
+	char		vrf_name[VRF_NAME_LEN];
 };
 
 struct request_to_kernel {
