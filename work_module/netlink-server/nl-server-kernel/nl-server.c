@@ -217,7 +217,7 @@ static ssize_t nl_kserver_read_info(struct file *file, char *buf,
 }
 
 static ssize_t nl_kserver_control(struct file *file, const char *buf,
-								  size_t count, loff_t *ppos)
+				  size_t count, loff_t *ppos)
 {
 	return 0;
 }
