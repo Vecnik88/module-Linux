@@ -97,8 +97,8 @@ static int set_carrier_vlan(struct nlmsghdr *nl_hdr)
 	}
 	snprintf(vlan_name, IFNAMSIZ, "%s%d", "vlan.", vlan_opt->vid);
 	NL_KSERV_DBG("vlan name=%s, is_up=%d, vrf name=%s!\n",
-				 vlan_name, vlan_opt->is_up,
-				 vlan_opt->vrf_name[0] ? vlan_opt->vrf_name : "global");
+		     vlan_name, vlan_opt->is_up,
+	       	     vlan_opt->vrf_name[0] ? vlan_opt->vrf_name : "global");
 
 	vlan_dev = __dev_get_by_name(net, vlan_name);
 	if (vlan_dev) {
