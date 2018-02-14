@@ -15,21 +15,21 @@
 
 #include "nl-server.h"
 
-#define NL_KSERV_LOG(fmt, ...)             \
+#define NL_KSERV_LOG(fmt, ...)  	   \
 	printk(KERN_INFO MODULE_NAME ": "  \
-		   "[%s] " fmt,            \
-		   __func__, ##__VA_ARGS__)
+	       "[%s] " fmt,                \
+	       __func__, ##__VA_ARGS__)
 
-#define NL_KSERV_ERR(fmt, ...)             \
+#define NL_KSERV_ERR(fmt, ...)  	   \
 	printk(KERN_ERR MODULE_NAME ": "   \
-		   "[%s] " fmt,            \
-		   __func__, ##__VA_ARGS__)
+	       "[%s] " fmt,                \
+	       __func__, ##__VA_ARGS__)
 
-#define NL_KSERV_DBG(fmt, ...)                     \
-	if (unlikely(nl_kserver_debug))            \
-		printk(KERN_ALERT MODULE_NAME ": " \
-		       "[%s] " fmt,                \
-		       __func__, ##__VA_ARGS__)
+#define NL_KSERV_DBG(fmt, ...)  	       \
+	if (unlikely(nl_kserver_debug))        \
+	    printk(KERN_ALERT MODULE_NAME ": " \
+	           "[%s] " fmt,                \
+	           __func__, ##__VA_ARGS__)
 
 extern struct net init_net;
 static struct sock *nl_socket = NULL;
@@ -38,7 +38,7 @@ static unsigned long nl_kserver_norm_msg = 0;
 
 int nl_kserver_debug = 0;
 module_param_named(debug_is_on, nl_kserver_debug, int, 0644);
-MODULE_PARM_DESC(debug_is_on, "Debuging this module: set in generate_modules.sh"
+MODULE_PARM_DESC(debug_is_on, "Debuging this module: set in /you_path/generate_modules.sh"
                               "(0=off debug, 1=on debug)");
 
 static struct net *get_pointer_by_vrf(char *vrf_name)
@@ -192,13 +192,13 @@ struct netlink_kernel_cfg cfg = {
 };
 
 static ssize_t nl_kserver_read_info(struct file *file, char *buf,
-				    size_t count, loff_t *ppos)
+                                    size_t count, loff_t *ppos)
 {
 	static char buf_msg[LEN_MSG];
 	memset(buf_msg, 0, LEN_MSG);
 
 	snprintf(buf_msg, LEN_MSG, "%s%lu\n%s%lu\n", "Normal message: ", nl_kserver_norm_msg,
-						     "Errors: ", nl_kserver_error);
+	                                             "Errors: ", nl_kserver_error);
 
 	if (*ppos >= strlen(buf_msg)) {
 		*ppos = 0;
@@ -217,7 +217,7 @@ static ssize_t nl_kserver_read_info(struct file *file, char *buf,
 }
 
 static ssize_t nl_kserver_control(struct file *file, const char *buf,
-				  size_t count, loff_t *ppos)
+                                  size_t count, loff_t *ppos)
 {
 	return 0;
 }
@@ -238,7 +238,6 @@ static int __init nl_kserver_init(void)
 		return -ENOMEM;
 	}
 	nl_node = proc_create(MODULE_NAME, S_IFREG | S_IRUGO | S_IWUGO, NULL, &nl_fops);
-
 	if (nl_node == NULL) {
 		NL_KSERV_ERR("can't create /proc/%s!\n", MODULE_NAME);
 		return -ENOENT;
@@ -262,4 +261,3 @@ module_exit(nl_kserver_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Netlink server");
 MODULE_AUTHOR("Anton Mikaev (ESR Group)");
-
