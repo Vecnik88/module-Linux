@@ -104,13 +104,13 @@ static int set_carrier_vlan(struct nlmsghdr *nl_hdr)
 	if (vlan_dev) {
 		if (vlan_opt->is_up) {
 			NL_KSERV_DBG("vlan name=%s in vrf=%s IS UP!\n",
-						 vlan_name,
-						 vlan_opt->vrf_name[0] ? vlan_opt->vrf_name : "global");
+				      vlan_name,
+				      vlan_opt->vrf_name[0] ? vlan_opt->vrf_name : "global");
 			netif_carrier_on(vlan_dev);
 		} else {
 			NL_KSERV_DBG("vlan name=%s in vrf=%s IS DOWN!\n",
-						 vlan_name,
-						 vlan_opt->vrf_name[0] ? vlan_opt->vrf_name : "global");
+				     vlan_name,
+			             vlan_opt->vrf_name[0] ? vlan_opt->vrf_name : "global");
 			netif_carrier_off(vlan_dev);
 		}
 		return 0;
