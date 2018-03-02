@@ -32,9 +32,9 @@
 	           __func__, ##__VA_ARGS__)
 
 extern struct net init_net;
-static struct sock *nl_socket = NULL;
-static unsigned long nl_kserv_error = 0;
-static unsigned long nl_kserv_norm_msg = 0;
+static u64 nl_kserv_err = 0;
+static u64 nl_kserv_norm = 0;
+static struct sock *nl_kserv_socket = NULL;
 
 int nl_kserv_debug = 0;
 module_param_named(debug, nl_kserv_debug, int, 0644);
@@ -102,9 +102,9 @@ static int set_carrier_netdev(char *dev_name, char *vrf_name, uint16_t is_up)
 		for_each_net (net) {
 			net_dev = __dev_get_by_name(net, dev_name);
 			if (net_dev) {
-				++nl_kserv_error;
+				++nl_kserv_err;
 				if (is_up) {
-					NL_KSERV_DBG("net device name=%s is not find vrf=%s IS UP!\n", 
+					NL_KSERV_DBG("net device name=%s is not find vrf=%s IS UP!\n",
 					             dev_name,
 					             vrf_name[0] ? vrf_name : "global");
 					netif_carrier_on(net_dev);
@@ -118,7 +118,7 @@ static int set_carrier_netdev(char *dev_name, char *vrf_name, uint16_t is_up)
 			}
 		}
 	}
-	NL_KSERV_ERR("failed vlan is not vrf!\n");
+	NL_KSERV_ERR("failed set carrier netdev %s!\n", dev_name);
 
 	return NETLINK_SERV_ERR;
 }
@@ -138,6 +138,8 @@ static int set_carrier_vlan(struct nlmsghdr *nl_hdr)
 	} else if (vlan_opt->vid < VLAN_FIRST || vlan_opt->vid > VLAN_LAST) {
 		NL_KSERV_ERR("failed number vlan!\n");
 		return NETLINK_SERV_ERR;
+	} else if (vlan_opt->vid == VLAN_FIRST) {
+		return 0;
 	}
 	snprintf(vlan_name, IFNAMSIZ, "%s%d", "vlan.", vlan_opt->vid);
 	NL_KSERV_DBG("vlan name=%s, is_up=%d, vrf name=%s!\n",
@@ -145,8 +147,8 @@ static int set_carrier_vlan(struct nlmsghdr *nl_hdr)
 	             vlan_opt->vrf_name[0] ? vlan_opt->vrf_name : "global");
 
 	return set_carrier_netdev(vlan_name,
-		                      vlan_opt->vrf_name,
-		                      vlan_opt->is_up);
+	                          vlan_opt->vrf_name,
+	                          vlan_opt->is_up);
 }
 
 int set_carrier_port_channel(struct nlmsghdr *nl_hdr)
@@ -167,44 +169,15 @@ int set_carrier_port_channel(struct nlmsghdr *nl_hdr)
 		NL_KSERV_ERR("failed number port channel!\n");
 		return NETLINK_SERV_ERR;
 	}
-	snprintf(port_channel_name, IFNAMSIZ, "%s%d", "vlan_po", port_channel_opt->num);
-	NL_KSERV_DBG("sub port channel name=%s, is_up=%d, vrf name=%s!\n",
-	             port_channel_name,
-	             port_channel_opt->is_up,
-	             port_channel_opt->vrf_name[0] ? port_channel_opt->vrf_name : "global");
-	if (err == NETLINK_SERV_ERR) {
-		NL_KSERV_ERR("is not set carrier port channel\n");
-		return err;
-	}
-	err = set_carrier_netdev(port_channel_name,
-	                         port_channel_opt->vrf_name,
-	                         port_channel_opt->is_up);
-	if (err == NETLINK_SERV_ERR) {
-		NL_KSERV_ERR("is not set carrier sub port channel %s\n", port_channel_name);
-		return err;
-	}
-	snprintf(port_channel_name, IFNAMSIZ, "%s%d%s", "po", port_channel_opt->num, "_vlan");
-	NL_KSERV_DBG("sub port channel name=%s, is_up=%d, vrf name=%s!\n",
-	             port_channel_name,
-	             port_channel_opt->is_up,
-	             port_channel_opt->vrf_name[0] ? port_channel_opt->vrf_name : "global");
-	err = set_carrier_netdev(port_channel_name,
-	                         port_channel_opt->vrf_name,
-	                         port_channel_opt->is_up);
-	if (err == NETLINK_SERV_ERR) {
-		NL_KSERV_ERR("is not set carrier sub port channel %s\n", port_channel_name);
-		return err;
-	}
 	snprintf(port_channel_name, IFNAMSIZ, "%s%d", "po", port_channel_opt->num);
 	NL_KSERV_DBG("port channel name=%s, is_up=%d, vrf name=%s!\n",
 	             port_channel_name,
 	             port_channel_opt->is_up,
 	             port_channel_opt->vrf_name[0] ? port_channel_opt->vrf_name : "global");
-	err = set_carrier_netdev(port_channel_name,
-	                         port_channel_opt->vrf_name,
-	                         port_channel_opt->is_up);
 
-	return err;
+	return set_carrier_netdev(port_channel_name,
+	                          port_channel_opt->vrf_name,
+	                          port_channel_opt->is_up);
 }
 
 static void nl_kserv_recv_msg(struct sk_buff *skb)
@@ -247,13 +220,13 @@ static void nl_kserv_recv_msg(struct sk_buff *skb)
 
 out:
 	if (err == NETLINK_SERV_ERR)
-		++nl_kserv_error;
+		++nl_kserv_err;
 	else
-		++nl_kserv_norm_msg;
+		++nl_kserv_norm;
 
 	skb_to_user = nlmsg_new(MAX_PAYLOAD, GFP_KERNEL);
 	if (skb_to_user == NULL) {
-		++nl_kserv_error;
+		++nl_kserv_err;
 		NL_KSERV_ERR("failed to allocate memory!\n");
 		return;
 	}
@@ -262,24 +235,24 @@ out:
 	NETLINK_CB(skb_to_user).dst_group = 0;
 	size = sizeof(struct reply_with_kernel);
 	memcpy((void *)nlmsg_data(nl_hdr), (void *)&reply, size);
-	if (nlmsg_unicast(nl_socket, skb_to_user, pid) < 0) {
-		++nl_kserv_error;
+	if (nlmsg_unicast(nl_kserv_socket, skb_to_user, pid) < 0) {
+		++nl_kserv_err;
 		NL_KSERV_ERR("failed send message to user-space!\n");
 	}
 }
 
-struct netlink_kernel_cfg cfg = {
+struct netlink_kernel_cfg nl_kserv_cfg = {
 	.input = nl_kserv_recv_msg,
 };
 
-static ssize_t nl_kserv_read_info(struct file *file, char *buf,
-                                    size_t count, loff_t *ppos)
+static ssize_t nl_kserv_read_info(struct file *file, char __user *buf,
+                                  size_t count, loff_t *ppos)
 {
 	static char buf_msg[LEN_MSG];
 	memset(buf_msg, 0, LEN_MSG);
 
-	snprintf(buf_msg, LEN_MSG, "%s%lu\n%s%lu\n", "Normal message: ", nl_kserv_norm_msg,
-	                                             "Errors: ", nl_kserv_error);
+	snprintf(buf_msg, LEN_MSG, "%s%lu\n%s%lu\n", "Normal message: ", nl_kserv_norm,
+	                                             "Errors: ",         nl_kserv_err);
 
 	if (*ppos >= strlen(buf_msg)) {
 		*ppos = 0;
@@ -296,13 +269,13 @@ static ssize_t nl_kserv_read_info(struct file *file, char *buf,
 	return count;
 }
 
-static ssize_t nl_kserv_control(struct file *file, const char *buf,
+static ssize_t nl_kserv_control(struct file *file, const char __user *buf,
                                 size_t count, loff_t *ppos)
 {
 	return 0;
 }
 
-static const struct file_operations nl_fops = {
+static const struct file_operations nl_kserv_fops = {
 	.owner = THIS_MODULE,
 	.read = nl_kserv_read_info,
 	.write = nl_kserv_control
@@ -310,15 +283,20 @@ static const struct file_operations nl_fops = {
 
 static int __init nl_kserv_init(void)
 {
-	struct proc_dir_entry *nl_node = NULL;
+	struct proc_dir_entry *nl_kserv_node = NULL;
 
-	nl_socket = netlink_kernel_create(&init_net, NETLINK_SERV_PROT, &cfg);
-	if (nl_socket == NULL) {
+	nl_kserv_socket = netlink_kernel_create(&init_net,
+	                                        NETLINK_SERV_PROT,
+	                                        &nl_kserv_cfg);
+	if (nl_kserv_socket == NULL) {
 		NL_KSERV_ERR("can't create netlink socket!\n");
 		return -ENOMEM;
 	}
-	nl_node = proc_create(MODULE_NAME, S_IFREG | S_IRUGO | S_IWUGO, NULL, &nl_fops);
-	if (nl_node == NULL) {
+	nl_kserv_node = proc_create(MODULE_NAME,
+	                            S_IFREG | S_IRUGO | S_IWUGO,
+	                            NULL,
+	                            &nl_kserv_fops);
+	if (nl_kserv_node == NULL) {
 		NL_KSERV_ERR("can't create /proc/%s!\n", MODULE_NAME);
 		return -ENOENT;
 	}
@@ -329,7 +307,7 @@ static int __init nl_kserv_init(void)
 
 static void __exit nl_kserv_exit(void)
 {
-	netlink_kernel_release(nl_socket);
+	netlink_kernel_release(nl_kserv_socket);
 	remove_proc_entry(MODULE_NAME, NULL);
 
 	NL_KSERV_ERR("unloaded!\n");
